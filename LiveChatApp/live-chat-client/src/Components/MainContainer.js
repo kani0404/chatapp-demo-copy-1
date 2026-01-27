@@ -12,10 +12,24 @@ function MainContainer() {
   const isModernGroupChat = location.pathname.startsWith("/app/group/");
 
   return (
-    <div className={"main-container" + (lightTheme ? "" : " dark")}>
+    <div className={"main-container" + (lightTheme ? "" : " dark")} style={{
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'row',
+      overflow: 'hidden'
+    }}>
       <myContext.Provider value={{ refresh: refresh, setRefresh: setRefresh }}>
         {!isModernGroupChat && <Sidebar />}
-        <Outlet />
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          width: '100%'
+        }}>
+          <Outlet />
+        </div>
       </myContext.Provider>
     </div>
   );
