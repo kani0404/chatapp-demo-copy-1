@@ -146,7 +146,7 @@ function CreateGroups() {
           backgroundColor: lightTheme ? "#FFFFFF" : "#1F2937",
           padding: "24px",
         }}>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 3, mt: 2 }}>
+          <Box sx={{ display: "flex", flexDirection: "row", gap: 3, mt: 2 }}>
             {/* Group Name Input */}
             <Box>
               <label style={{
