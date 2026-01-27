@@ -13,11 +13,18 @@ const loginController = expressAsyncHandler(async (req, res) => {
   const user = await UserModel.findOne({ name });
 
   if (user && (await user.matchPassword(password))) {
+    // Update user online status
+    await UserModel.findByIdAndUpdate(user._id, { 
+      isOnline: true, 
+      lastSeen: new Date() 
+    });
+    
     return res.status(200).json({
       _id: user._id,
       name: user.name,
       email: user.email,
       isAdmin: user.isAdmin,
+      isOnline: true,
       token: generateToken(user._id),
     });
   } else {
@@ -77,8 +84,21 @@ const fetchAllUsersController = expressAsyncHandler(async (req, res) => {
   return res.status(200).json(users);
 });
 
+// Logout
+const logoutController = expressAsyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  
+  await UserModel.findByIdAndUpdate(userId, { 
+    isOnline: false, 
+    lastSeen: new Date() 
+  });
+  
+  return res.status(200).json({ message: "Logged out successfully" });
+});
+
 module.exports = {
   loginController,
   registerController,
   fetchAllUsersController,
+  logoutController,
 };

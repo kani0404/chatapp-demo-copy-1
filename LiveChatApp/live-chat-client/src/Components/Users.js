@@ -104,10 +104,36 @@ function Users() {
                     );
                     dispatch(refreshSidebarFun());
                   }}
+                  style={{ position: "relative" }}
                 >
-                  <p className={"con-icon" + (lightTheme ? "" : " dark")}>T</p>
+                  <p className={"con-icon" + (lightTheme ? "" : " dark")}>
+                    {user.name.charAt(0).toUpperCase()}
+                  </p>
+                  {/* Online indicator */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: "12px",
+                      height: "12px",
+                      borderRadius: "50%",
+                      backgroundColor: user.isOnline ? "#10b981" : "#9ca3af",
+                      border: "2px solid " + (lightTheme ? "white" : "#1f2937"),
+                      bottom: "8px",
+                      left: "36px",
+                    }}
+                  />
                   <p className={"con-title" + (lightTheme ? "" : " dark")}>
                     {user.name}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "11px",
+                      color: user.isOnline ? "#10b981" : "#9ca3af",
+                      margin: "0",
+                      marginLeft: "auto",
+                    }}
+                  >
+                    {user.isOnline ? "Online" : "Offline"}
                   </p>
                 </motion.div>
               );

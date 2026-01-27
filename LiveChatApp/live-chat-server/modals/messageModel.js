@@ -24,6 +24,25 @@ const messageModel = mongoose.Schema(
       size: Number,
       base64: String,
     },
+    status: {
+      type: String,
+      enum: ["sent", "delivered", "read"],
+      default: "sent",
+    },
+    groupMessage: {
+      type: Boolean,
+      default: false,
+    },
+    group: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Group",
+    },
+    readBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timeStamp: true,

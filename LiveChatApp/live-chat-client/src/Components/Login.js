@@ -30,7 +30,7 @@ function Login() {
       };
 
       const response = await axios.post(
-        "http://localhost:8080/user/login/",
+        "http://localhost:8080/user/login",
         data,
         config
       );
@@ -58,7 +58,7 @@ function Login() {
       };
 
       const response = await axios.post(
-        "http://localhost:8080/user/register/",
+        "http://localhost:8080/user/register",
         data,
         config
       );
@@ -133,9 +133,19 @@ function Login() {
               variant="outlined"
               color="secondary"
               onClick={loginHandler}
-              isLoading
+              disabled={loading}
+              sx={{
+                position: "relative",
+              }}
             >
-              Login
+              {loading ? (
+                <>
+                  <CircularProgress size={20} sx={{ marginRight: "10px" }} />
+                  Logging in...
+                </>
+              ) : (
+                "Login"
+              )}
             </Button>
             <p>
               Don't have an Account ?{" "}

@@ -11,6 +11,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import Skeleton from "@mui/material/Skeleton";
 import axios from "axios";
 import { myContext } from "./MainContainer";
+import io from "socket.io-client";
 
 function ChatArea() {
   const lightTheme = useSelector((state) => state.themeKey);
@@ -173,6 +174,43 @@ function ChatArea() {
   useEffect(() => {
     scrollToBottom();
   }, [allMessages]);
+
+  // Socket.io listeners for message status updates
+  useEffect(() => {
+    const socket = io("http://localhost:8080", {
+      query: { userId: userData.data._id },
+    });
+
+    // Listen for message delivered status
+    socket.on("message_delivered", (data) => {
+      console.log("Message delivered:", data.messageId);
+      setAllMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === data.messageId ? { ...msg, status: "delivered" } : msg
+        )
+      );
+    });
+
+    // Listen for message read status
+    socket.on("message_read", (data) => {
+      console.log("Message read:", data.messageId);
+      setAllMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === data.messageId ? { ...msg, status: "read" } : msg
+        )
+      );
+    });
+
+    // Listen for user status changes
+    socket.on("user_status_changed", (data) => {
+      console.log("User status changed:", data);
+      // You can update user online status here if needed
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [userData.data._id]);
 
   if (!loaded) {
     return (

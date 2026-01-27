@@ -32,15 +32,15 @@ function MessageOthers({ props }) {
         width: "44px",
         height: "44px",
         borderRadius: "50%",
-        background: "linear-gradient(135deg, #3B82F6, #1E40AF)",
+        background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: "white",
+        color: "#f0f2f5",
         fontSize: "18px",
         fontWeight: "700",
         flexShrink: 0,
-        boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
+        boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)",
       }}>
         {props.sender.name[0].toUpperCase()}
       </div>
@@ -54,7 +54,7 @@ function MessageOthers({ props }) {
           margin: "0",
           fontSize: "14px",
           fontWeight: "700",
-          color: "#60a5fa",
+          color: "#06b6d4",
           paddingLeft: "6px",
           textTransform: "capitalize",
           letterSpacing: "0.3px",
@@ -69,8 +69,8 @@ function MessageOthers({ props }) {
         }}>
           {props.content && (
             <div style={{
-              backgroundColor: "#dbeafe",
-              color: "#0c4a6e",
+              backgroundColor: "rgba(99, 102, 241, 0.12)",
+              color: "#f0f2f5",
               padding: "12px 16px",
               borderRadius: "18px",
               width: "fit-content",
@@ -78,7 +78,7 @@ function MessageOthers({ props }) {
               lineHeight: "1.6",
               fontSize: "16px",
               fontWeight: "500",
-              boxShadow: "0 2px 8px rgba(59, 130, 246, 0.2)",
+              boxShadow: "0 4px 12px rgba(99, 102, 241, 0.15)",
               animation: "slideIn 0.3s ease-out",
             }}>
               {props.content}
@@ -94,15 +94,15 @@ function MessageOthers({ props }) {
                     maxWidth: "300px",
                     maxHeight: "300px",
                     borderRadius: "12px",
-                    boxShadow: "0 2px 8px rgba(59, 130, 246, 0.2)",
+                    boxShadow: "0 4px 12px rgba(99, 102, 241, 0.2)",
                   }}
                 />
               ) : (
                 <div
                   onClick={() => downloadFile(props.file.base64, props.file.originalName, props.file.mimeType)}
                   style={{
-                    backgroundColor: "#dbeafe",
-                    color: "#0c4a6e",
+                    backgroundColor: "rgba(99, 102, 241, 0.12)",
+                    color: "#f0f2f5",
                     padding: "12px 16px",
                     borderRadius: "12px",
                     cursor: "pointer",
@@ -113,11 +113,11 @@ function MessageOthers({ props }) {
                     fontSize: "14px",
                     fontWeight: "600",
                     transition: "background-color 0.2s ease",
-                    border: "2px solid #60a5fa",
-                    boxShadow: "0 2px 8px rgba(59, 130, 246, 0.2)",
+                    border: "2px solid rgba(99, 102, 241, 0.2)",
+                    boxShadow: "0 4px 12px rgba(99, 102, 241, 0.15)",
                   }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = "#bfdbfe"}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = "#dbeafe"}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = "rgba(99, 102, 241, 0.2)"}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = "rgba(99, 102, 241, 0.12)"}
                 >
                   📎 {props.file.originalName}
                 </div>

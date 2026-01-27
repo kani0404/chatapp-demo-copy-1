@@ -10,7 +10,7 @@ import "./myStyles.css";
 
 function Groups() {
   const { refresh, setRefresh } = useContext(myContext);
-  const lightTheme = true; // Force light theme for professional look
+  const darkTheme = true; // Use dark elegant theme
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const userData = JSON.parse(localStorage.getItem("userData"));
@@ -46,36 +46,42 @@ function Groups() {
 
   return (
     <div style={{
-      flex: "0.7",
+      flex: "0.75",
       display: "flex",
       flexDirection: "column",
       height: "100%",
-      backgroundColor: lightTheme ? "#FFFFFF" : "#0F172A",
+      background: "linear-gradient(135deg, rgba(10, 14, 39, 0.6) 0%, rgba(26, 38, 71, 0.4) 100%)",
     }}>
       {/* Header */}
       <div style={{
-        backgroundColor: lightTheme ? "#F9FAFB" : "#111827",
-        borderBottom: "1px solid " + (lightTheme ? "#E5E7EB" : "#374151"),
-        padding: "16px",
+        background: "linear-gradient(135deg, rgba(18, 23, 47, 0.98) 0%, rgba(26, 38, 71, 0.98) 100%)",
+        backdropFilter: "blur(15px)",
+        borderBottom: "1px solid rgba(99, 102, 241, 0.2)",
+        padding: "16px 20px",
+        margin: "14px",
+        borderRadius: "18px",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+        boxShadow: "0 8px 32px rgba(99, 102, 241, 0.15)",
       }}>
         <h2 style={{
           margin: "0",
           fontSize: "18px",
-          fontWeight: "600",
-          color: lightTheme ? "#1F2937" : "#E5E7EB",
+          fontWeight: "700",
+          color: "#f0f2f5",
+          letterSpacing: "0.3px",
         }}>
           Groups
         </h2>
         <IconButton
           onClick={() => setRefresh(!refresh)}
           sx={{
-            color: lightTheme ? "#6B7280" : "#9CA3AF",
+            color: "#f0f2f5",
             "&:hover": {
-              backgroundColor: lightTheme ? "#F3F4F6" : "#1F2937",
+              backgroundColor: "rgba(99, 102, 241, 0.2)",
+              transform: "rotate(180deg)",
+              transition: "all 0.3s ease",
             },
           }}
         >
@@ -85,20 +91,22 @@ function Groups() {
 
       {/* Search Bar */}
       <div style={{
-        backgroundColor: lightTheme ? "#FFFFFF" : "#111827",
-        borderBottom: "1px solid " + (lightTheme ? "#E5E7EB" : "#374151"),
-        padding: "12px 16px",
+        background: "transparent",
+        padding: "0 14px",
+        marginBottom: "8px",
       }}>
         <div style={{
           display: "flex",
           alignItems: "center",
-          gap: "8px",
-          backgroundColor: lightTheme ? "#F3F4F6" : "#1F2937",
-          borderRadius: "24px",
-          padding: "8px 12px",
-          border: "1px solid " + (lightTheme ? "#D1D5DB" : "#374151"),
+          gap: "12px",
+          background: "linear-gradient(135deg, rgba(18, 23, 47, 0.98) 0%, rgba(26, 38, 71, 0.98) 100%)",
+          backdropFilter: "blur(15px)",
+          borderRadius: "18px",
+          padding: "10px 16px",
+          border: "1px solid rgba(99, 102, 241, 0.2)",
+          boxShadow: "0 6px 24px rgba(99, 102, 241, 0.1)",
         }}>
-          <SearchIcon sx={{ color: lightTheme ? "#9CA3AF" : "#6B7280", fontSize: "20px" }} />
+          <SearchIcon sx={{ color: "#f0f2f5", fontSize: "20px", opacity: 0.7 }} />
           <input
             placeholder="Search groups..."
             style={{
@@ -107,7 +115,8 @@ function Groups() {
               outline: "none",
               fontSize: "14px",
               flex: 1,
-              color: lightTheme ? "#1F2937" : "#E5E7EB",
+              color: "#f0f2f5",
+              fontFamily: '"Inter", "Segoe UI", sans-serif',
             }}
           />
         </div>
@@ -117,10 +126,10 @@ function Groups() {
       <div style={{
         flex: 1,
         overflowY: "auto",
-        padding: "8px",
-        backgroundColor: lightTheme ? "#FFFFFF" : "#0F172A",
+        padding: "0 8px",
+        background: "transparent",
         scrollbarWidth: "thin",
-        scrollbarColor: lightTheme ? "#D1D5DB #FFFFFF" : "#4B5563 #0F172A",
+        scrollbarColor: "rgba(99, 102, 241, 0.4) transparent",
       }}>
         {loading ? (
           <div style={{
@@ -128,7 +137,7 @@ function Groups() {
             justifyContent: "center",
             alignItems: "center",
             height: "100%",
-            color: lightTheme ? "#9CA3AF" : "#6B7280",
+            color: "#8a91a5",
           }}>
             <p>Loading groups...</p>
           </div>
@@ -139,7 +148,7 @@ function Groups() {
             justifyContent: "center",
             alignItems: "center",
             height: "100%",
-            color: lightTheme ? "#9CA3AF" : "#6B7280",
+            color: "#8a91a5",
             gap: "12px",
           }}>
             <p style={{ fontSize: "14px" }}>No groups yet</p>
@@ -155,41 +164,69 @@ function Groups() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ delay: index * 0.05 }}
                 onClick={() => nav(`/app/group/${group._id}`)}
-                className="group-item"
+                className="group-item list-item"
                 style={{
-                  backgroundColor: lightTheme ? "#F9FAFB" : "#1F2937",
-                  border: "1px solid " + (lightTheme ? "#E5E7EB" : "#374151"),
+                  margin: "8px 12px",
+                  padding: "14px 18px",
+                  borderRadius: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  background: "linear-gradient(135deg, rgba(18, 23, 47, 0.9) 0%, rgba(26, 38, 71, 0.9) 100%)",
+                  border: "1px solid rgba(99, 102, 241, 0.15)",
+                  cursor: "pointer",
+                  transition: "all 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = lightTheme ? "#F0F9FF" : "#374151";
-                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 123, 255, 0.2)";
+                  e.currentTarget.style.background = "linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(26, 38, 71, 0.9) 100%)";
+                  e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.4)";
+                  e.currentTarget.style.transform = "translateX(6px)";
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = lightTheme ? "#F9FAFB" : "#1F2937";
-                  e.currentTarget.style.boxShadow = "none";
+                  e.currentTarget.style.background = "linear-gradient(135deg, rgba(18, 23, 47, 0.9) 0%, rgba(26, 38, 71, 0.9) 100%)";
+                  e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.15)";
+                  e.currentTarget.style.transform = "translateX(0)";
                 }}
               >
                 {/* Group Avatar */}
-                <div className="group-avatar">
+                <div style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #6366f1, #a855f7)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "white",
+                  fontSize: "18px",
+                  fontWeight: "700",
+                  boxShadow: "0 6px 20px rgba(99, 102, 241, 0.45)",
+                  flexShrink: 0,
+                  fontFamily: '"Inter", sans-serif',
+                }}>
                   {group.groupName.charAt(0).toUpperCase()}
                 </div>
 
                 {/* Group Info */}
-                <div style={{ flex: 1, marginLeft: "12px" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <h4 style={{
                     margin: "0 0 4px 0",
                     fontSize: "15px",
                     fontWeight: "600",
-                    color: lightTheme ? "#1F2937" : "#E5E7EB",
+                    color: "#f0f2f5",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
                   }}>
                     {group.groupName}
                   </h4>
                   <p style={{
                     margin: "0",
                     fontSize: "13px",
-                    color: lightTheme ? "#9CA3AF" : "#6B7280",
+                    color: "#8a91a5",
+                    fontWeight: "500",
                   }}>
-                    {group.members.length} member{group.members.length !== 1 ? "s" : ""}
+                    {group.members?.length || 0} member{(group.members?.length || 0) !== 1 ? "s" : ""}
                   </p>
                 </div>
 
@@ -197,12 +234,13 @@ function Groups() {
                 {group.latestMessage && (
                   <div style={{
                     fontSize: "12px",
-                    color: lightTheme ? "#6B7280" : "#9CA3AF",
+                    color: "#7a8195",
                     textAlign: "right",
-                    maxWidth: "100px",
+                    maxWidth: "120px",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
+                    fontWeight: "500",
                   }}>
                     {group.latestMessage.content}
                   </div>

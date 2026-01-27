@@ -14,6 +14,7 @@ import { toggleTheme } from "../Features/themeSlice";
 import axios from "axios";
 import { refreshSidebarFun } from "../Features/refreshSidebar";
 import { myContext } from "./MainContainer";
+import io from "socket.io-client";
 
 function Sidebar() {
   const navigate = useNavigate();
@@ -34,6 +35,21 @@ function Sidebar() {
   }
 
   const user = userData.data;
+  
+  // Initialize socket connection and emit user online event
+  useEffect(() => {
+    const socket = io("http://localhost:8080", {
+      query: { userId: user._id },
+    });
+
+    // Emit user online event
+    socket.emit("user_online", user._id);
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [user._id]);
+
   useEffect(() => {
     // console.log("Sidebar : ", user.token);
     const config = {
@@ -121,8 +137,22 @@ function Sidebar() {
           </IconButton>
           <IconButton
             onClick={() => {
-              localStorage.removeItem("userData");
-              navigate("/");
+              const config = {
+                headers: {
+                  Authorization: `Bearer ${user.token}`,
+                },
+              };
+              axios
+                .post("http://localhost:8080/user/logout", {}, config)
+                .then(() => {
+                  localStorage.removeItem("userData");
+                  navigate("/");
+                })
+                .catch((error) => {
+                  console.error("Logout error:", error);
+                  localStorage.removeItem("userData");
+                  navigate("/");
+                });
             }}
           >
             <ExitToAppIcon className={"icon" + (lightTheme ? "" : " dark")} />

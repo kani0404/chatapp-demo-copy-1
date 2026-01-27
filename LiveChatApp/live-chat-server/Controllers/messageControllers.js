@@ -28,6 +28,7 @@ const sendMessage = expressAsyncHandler(async (req, res) => {
     sender: req.user._id,
     content: content || "",
     chat: chatId,
+    status: "sent",
   };
 
   if (file) {
@@ -59,4 +60,49 @@ const sendMessage = expressAsyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { allMessages, sendMessage };
+// Update message status
+const updateMessageStatus = expressAsyncHandler(async (req, res) => {
+  const { messageId, status } = req.body;
+
+  if (!messageId || !status) {
+    return res.status(400).json({ message: "Message ID and status required" });
+  }
+
+  try {
+    const message = await Message.findByIdAndUpdate(
+      messageId,
+      { status: status },
+      { new: true }
+    );
+    res.json(message);
+  } catch (error) {
+    res.status(400);
+    throw new Error(error.message);
+  }
+});
+
+// Mark message as read
+const markMessageAsRead = expressAsyncHandler(async (req, res) => {
+  const { messageId } = req.body;
+
+  if (!messageId) {
+    return res.status(400).json({ message: "Message ID required" });
+  }
+
+  try {
+    const message = await Message.findByIdAndUpdate(
+      messageId,
+      { 
+        status: "read",
+        $addToSet: { readBy: req.user._id }
+      },
+      { new: true }
+    );
+    res.json(message);
+  } catch (error) {
+    res.status(400);
+    throw new Error(error.message);
+  }
+});
+
+module.exports = { allMessages, sendMessage, updateMessageStatus, markMessageAsRead };

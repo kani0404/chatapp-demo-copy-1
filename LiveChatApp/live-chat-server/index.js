@@ -49,13 +49,19 @@ app.use("/message", messageRoutes);
 app.use("/group", groupRoutes);
 
 // Socket.io setup
+const userSockets = {}; // Map userId to socketId
+
 io.on("connection", (socket) => {
   console.log("New user connected:", socket.id);
 
-  // User online
+  // User online - store socket mapping
   socket.on("user_online", (userId) => {
     socket.join(userId);
+    userSockets[userId] = socket.id;
     console.log(`User ${userId} is online`);
+    
+    // Broadcast user online status to all connected clients
+    io.emit("user_status_changed", { userId, isOnline: true });
   });
 
   // Join group
@@ -78,11 +84,62 @@ io.on("connection", (socket) => {
       senderName: data.senderName,
       content: data.content,
       timestamp: data.timestamp,
+      status: "sent",
     });
+  });
+
+  // Mark message as delivered
+  socket.on("message_delivered", (data) => {
+    const { messageId, receiverId, senderId } = data;
+    if (userSockets[receiverId]) {
+      io.to(receiverId).emit("message_delivered", { messageId, status: "delivered" });
+    }
+    if (userSockets[senderId]) {
+      io.to(senderId).emit("message_delivered", { messageId, status: "delivered" });
+    }
+  });
+
+  // Mark message as read
+  socket.on("message_read", (data) => {
+    const { messageId, receiverId, senderId } = data;
+    if (userSockets[senderId]) {
+      io.to(senderId).emit("message_read", { messageId, status: "read" });
+    }
+  });
+
+  // Group message read
+  socket.on("group_message_read", (data) => {
+    const { messageId, groupId, userId } = data;
+    io.to(`group_${groupId}`).emit("group_message_read", { messageId, userId, status: "read" });
+  });
+
+  // Typing indicator
+  socket.on("user_typing", (data) => {
+    const { receiverId, senderName, senderId } = data;
+    if (userSockets[receiverId]) {
+      io.to(receiverId).emit("user_typing", { senderName, senderId });
+    }
+  });
+
+  // Stop typing indicator
+  socket.on("user_stop_typing", (data) => {
+    const { receiverId, senderId } = data;
+    if (userSockets[receiverId]) {
+      io.to(receiverId).emit("user_stop_typing", { senderId });
+    }
   });
 
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
+    // Find and remove user from userSockets
+    for (let userId in userSockets) {
+      if (userSockets[userId] === socket.id) {
+        delete userSockets[userId];
+        // Broadcast user offline status
+        io.emit("user_status_changed", { userId, isOnline: false });
+        break;
+      }
+    }
   });
 });
 
