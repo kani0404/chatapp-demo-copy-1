@@ -86,7 +86,7 @@ function Users() {
                 <motion.div
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.98 }}
-                  className={"list-tem" + (lightTheme ? "" : " dark")}
+                  className={"user-list-item" + (lightTheme ? "" : " dark")}
                   key={index}
                   onClick={() => {
                     console.log("Creating chat with ", user.name);
@@ -104,37 +104,33 @@ function Users() {
                     );
                     dispatch(refreshSidebarFun());
                   }}
-                  style={{ position: "relative" }}
                 >
-                  <p className={"con-icon" + (lightTheme ? "" : " dark")}>
-                    {user.name.charAt(0).toUpperCase()}
-                  </p>
-                  {/* Online indicator */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      width: "12px",
-                      height: "12px",
-                      borderRadius: "50%",
-                      backgroundColor: user.isOnline ? "#10b981" : "#9ca3af",
-                      border: "2px solid " + (lightTheme ? "white" : "#1f2937"),
-                      bottom: "8px",
-                      left: "36px",
-                    }}
-                  />
-                  <p className={"con-title" + (lightTheme ? "" : " dark")}>
-                    {user.name}
-                  </p>
-                  <p
-                    style={{
-                      fontSize: "11px",
-                      color: user.isOnline ? "#10b981" : "#9ca3af",
-                      margin: "0",
-                      marginLeft: "auto",
-                    }}
-                  >
-                    {user.isOnline ? "Online" : "Offline"}
-                  </p>
+                  <div className="user-avatar-wrapper">
+                    <p className={"con-icon" + (lightTheme ? "" : " dark")}>
+                      {user.name.charAt(0).toUpperCase()}
+                    </p>
+                    {/* Online indicator */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        width: "12px",
+                        height: "12px",
+                        borderRadius: "50%",
+                        backgroundColor: user.isOnline ? "#10b981" : "#9ca3af",
+                        border: "2px solid " + (lightTheme ? "white" : "#1f2937"),
+                        bottom: "0px",
+                        right: "0px",
+                      }}
+                    />
+                  </div>
+                  <div className="user-info-wrapper">
+                    <p className={"con-title" + (lightTheme ? "" : " dark")}>
+                      {user.name}
+                    </p>
+                    <p className="user-status">
+                      {user.isOnline ? "Online" : "Offline"}
+                    </p>
+                  </div>
                 </motion.div>
               );
             })}
