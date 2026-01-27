@@ -67,13 +67,26 @@ function ModernGroupChat() {
 
     newSocket.on("new_group_message", (data) => {
       if (data.groupId === groupId) {
-        const newMessage = {
-          _id: Date.now(),
-          sender: { _id: data.senderId, name: data.senderName },
-          content: data.content,
-          createdAt: data.timestamp,
-        };
-        setMessages((prev) => [...prev, newMessage]);
+        // Check if message already exists to avoid duplicates
+        setMessages((prev) => {
+          const messageExists = prev.some(msg => 
+            msg._id === data._id || 
+            (msg.content === data.content && msg.sender._id === data.senderId && 
+             Math.abs(new Date(msg.createdAt) - new Date(data.timestamp)) < 1000)
+          );
+          
+          if (messageExists) {
+            return prev;
+          }
+          
+          const newMessage = {
+            _id: data._id || Date.now(),
+            sender: { _id: data.senderId, name: data.senderName },
+            content: data.content,
+            createdAt: data.timestamp,
+          };
+          return [...prev, newMessage];
+        });
       }
     });
 
@@ -97,6 +110,18 @@ function ModernGroupChat() {
       }
     });
 
+    newSocket.on("user_status_changed", (data) => {
+      if (group && group.members.some(m => m._id === data.userId)) {
+        setOnlineMembers(prev => {
+          if (data.isOnline) {
+            return prev.some(m => m === data.userId) ? prev : [...prev, data.userId];
+          } else {
+            return prev.filter(m => m !== data.userId);
+          }
+        });
+      }
+    });
+
     setSocket(newSocket);
     return () => {
       if (newSocket) {
@@ -104,7 +129,7 @@ function ModernGroupChat() {
         newSocket.disconnect();
       }
     };
-  }, [groupId, user._id]);
+  }, [groupId, user._id, group]);
 
   // Fetch group data
   useEffect(() => {
@@ -123,13 +148,22 @@ function ModernGroupChat() {
         if (currentGroup) {
           setGroup(currentGroup);
           setAllGroups(groupsResponse.data || []);
-          setMessages(messagesResponse.data || []);
-          setOnlineMembers(currentGroup.members || []);
+          
+          // Set messages from API - these are persisted in DB
+          const fetchedMessages = messagesResponse.data || [];
+          console.log("Fetched messages from DB:", fetchedMessages.length);
+          setMessages(fetchedMessages);
+          
+          // Get online members from the group's members who have isOnline = true
+          const onlineMemberIds = currentGroup.members
+            .filter(member => member.isOnline === true)
+            .map(member => member._id);
+          setOnlineMembers(onlineMemberIds);
         }
         setLoading(false);
       })
       .catch((error) => {
-        console.error("Error:", error);
+        console.error("Error fetching group data:", error.response?.data || error.message);
         setLoading(false);
       });
   }, [groupId, refresh]);
@@ -137,6 +171,33 @@ function ModernGroupChat() {
   const sendMessage = () => {
     if (!messageContent.trim()) return;
 
+    const tempContent = messageContent;
+    const tempMessageId = `temp_${Date.now()}`;
+
+    // OPTIMISTIC UPDATE - Add message to UI immediately
+    const optimisticMessage = {
+      _id: tempMessageId,
+      sender: { _id: user._id, name: user.name },
+      content: tempContent,
+      createdAt: new Date().toISOString(),
+      status: "sending",
+    };
+    
+    setMessages((prevMessages) => [...prevMessages, optimisticMessage]);
+    setMessageContent("");
+
+    // Broadcast immediately via socket so others see it right away
+    if (socket) {
+      socket.emit("group_message", {
+        groupId: groupId,
+        senderId: user._id,
+        senderName: user.name,
+        content: tempContent,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // NOW send to server in background
     const config = {
       headers: {
         Authorization: `Bearer ${user.token}`,
@@ -144,36 +205,31 @@ function ModernGroupChat() {
       },
     };
 
-    const tempContent = messageContent;
-
     const payload = {
-      message: tempContent,
+      content: tempContent,
       groupId: groupId,
-      senderId: user._id,
     };
 
-    // Send to server
     axios
       .post("http://localhost:8080/group/message/send", payload, config)
       .then((response) => {
-        // Add message to UI ONLY after backend confirms success
-        setMessages((prevMessages) => [...prevMessages, response.data]);
-        setMessageContent("");
-
-        if (socket) {
-          socket.emit("group_message", {
-            groupId: groupId,
-            senderId: user._id,
-            senderName: user.name,
-            content: tempContent,
-            timestamp: response.data.createdAt,
-          });
-        }
+        // Update the message with actual ID and data from server
+        const savedMessage = response.data;
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg._id === tempMessageId
+              ? { ...savedMessage, status: "sent" }
+              : msg
+          )
+        );
       })
       .catch((error) => {
         console.error("Error sending message:", error.response?.data || error.message);
+        // Remove the optimistic message if it failed
+        setMessages((prevMessages) =>
+          prevMessages.filter((msg) => msg._id !== tempMessageId)
+        );
       });
-
   };
 
   const onEmojiClick = (emojiObject) => {
@@ -421,7 +477,7 @@ function ModernGroupChat() {
                   {group.groupName}
                 </h3>
                 <p style={{ margin: "0", fontSize: "13px", color: "#06b6d4", fontWeight: "500" }}>
-                  🟢 {onlineMembers.length} online
+                  🟢 {onlineMembers.length}/{group.members.length} online
                 </p>
               </div>
               </div>
@@ -458,11 +514,13 @@ function ModernGroupChat() {
               style={{
                 flex: 1,
                 overflowY: "auto",
-                padding: "20px 24px",
+                padding: "20px 32px",
                 display: "flex",
                 flexDirection: "column",
-                gap: "12px",
+                gap: "16px",
                 backgroundColor: "#0a0e27",
+                width: "100%",
+                maxWidth: "100%",
               }}
             >
               {messages.length === 0 ? (
@@ -496,24 +554,27 @@ function ModernGroupChat() {
                       style={{
                         display: "flex",
                         justifyContent: isOwnMessage ? "flex-end" : "flex-start",
-                        marginBottom: "2px",
+                        marginBottom: "16px",
                         animation: "slideIn 0.3s ease",
+                        width: "100%",
+                        paddingLeft: isOwnMessage ? "0" : "0",
+                        paddingRight: isOwnMessage ? "0" : "0",
                       }}
                     >
                       <div
                         style={{
-                          maxWidth: "60%",
+                          maxWidth: "70%",
                           display: "flex",
                           flexDirection: "column",
                           alignItems: isOwnMessage ? "flex-end" : "flex-start",
-                          gap: "2px",
+                          gap: "6px",
                         }}
                       >
                         {!isOwnMessage && (
                           <p
                             style={{
-                              margin: "0 0 8px 0",
-                              fontSize: "14px",
+                              margin: "0 0 4px 0",
+                              fontSize: "13px",
                               fontWeight: "700",
                               color: "#06b6d4",
                               paddingLeft: "8px",
@@ -530,24 +591,23 @@ function ModernGroupChat() {
                               ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
                               : "rgba(99, 102, 241, 0.12)",
                             color: isOwnMessage ? "#f0f2f5" : "#f0f2f5",
-                            padding: "14px 18px",
-                            borderRadius: "18px",
+                            padding: "12px 16px",
+                            borderRadius: "16px",
                             wordBreak: "break-word",
-                            lineHeight: "1.6",
-                            fontSize: "16px",
+                            lineHeight: "1.5",
+                            fontSize: "15px",
                             fontWeight: "500",
                             boxShadow: isOwnMessage 
                               ? "0 4px 12px rgba(99, 102, 241, 0.3)" 
                               : "0 2px 8px rgba(99, 102, 241, 0.15)",
-                            maxWidth: "65%",
                           }}
                         >
                           {message.content}
                         </div>
                         <p
                           style={{
-                            margin: "4px 0 0 0",
-                            fontSize: "12px",
+                            margin: "0",
+                            fontSize: "11px",
                             color: "rgba(240, 242, 245, 0.5)",
                             paddingLeft: isOwnMessage ? "0" : "8px",
                             paddingRight: isOwnMessage ? "8px" : "0",

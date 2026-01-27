@@ -110,7 +110,8 @@ const sendGroupMessage = asyncHandler(async (req, res) => {
       group: groupId,
     });
 
-    const populatedMessage = await message
+    // Properly populate the message document
+    const populatedMessage = await GroupMessage.findById(message._id)
       .populate("sender", "name email")
       .populate("group");
 
