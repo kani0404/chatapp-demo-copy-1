@@ -155,21 +155,14 @@ function Groups() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ delay: index * 0.05 }}
                 onClick={() => nav(`/app/group/${group._id}`)}
+                className="group-item"
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  padding: "12px",
-                  margin: "6px 0",
-                  borderRadius: "8px",
-                  cursor: "pointer",
                   backgroundColor: lightTheme ? "#F9FAFB" : "#1F2937",
                   border: "1px solid " + (lightTheme ? "#E5E7EB" : "#374151"),
-                  transition: "all 0.2s ease",
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = lightTheme ? "#F3F4F6" : "#374151";
-                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
+                  e.currentTarget.style.backgroundColor = lightTheme ? "#F0F9FF" : "#374151";
+                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 123, 255, 0.2)";
                 }}
                 onMouseOut={(e) => {
                   e.currentTarget.style.backgroundColor = lightTheme ? "#F9FAFB" : "#1F2937";
@@ -177,27 +170,15 @@ function Groups() {
                 }}
               >
                 {/* Group Avatar */}
-                <div style={{
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg, #3B82F6, #1E40AF)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "white",
-                  fontSize: "18px",
-                  fontWeight: "600",
-                  flexShrink: 0,
-                }}>
+                <div className="group-avatar">
                   {group.groupName.charAt(0).toUpperCase()}
                 </div>
 
                 {/* Group Info */}
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, marginLeft: "12px" }}>
                   <h4 style={{
                     margin: "0 0 4px 0",
-                    fontSize: "14px",
+                    fontSize: "15px",
                     fontWeight: "600",
                     color: lightTheme ? "#1F2937" : "#E5E7EB",
                   }}>
@@ -205,7 +186,7 @@ function Groups() {
                   </h4>
                   <p style={{
                     margin: "0",
-                    fontSize: "12px",
+                    fontSize: "13px",
                     color: lightTheme ? "#9CA3AF" : "#6B7280",
                   }}>
                     {group.members.length} member{group.members.length !== 1 ? "s" : ""}
@@ -218,7 +199,7 @@ function Groups() {
                     fontSize: "12px",
                     color: lightTheme ? "#6B7280" : "#9CA3AF",
                     textAlign: "right",
-                    maxWidth: "120px",
+                    maxWidth: "100px",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",

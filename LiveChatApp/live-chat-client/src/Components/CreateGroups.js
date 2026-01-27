@@ -127,178 +127,187 @@ function CreateGroups() {
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: "12px",
-            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+            borderRadius: "20px",
+            boxShadow: "0 20px 40px rgba(0,0,0,0.4)",
+            background: lightTheme ? "#FFFFFF" : "#0f172a",
           }
         }}
       >
         <DialogTitle sx={{
-          fontSize: "18px",
-          fontWeight: "600",
+          fontSize: "20px",
+          fontWeight: "700",
           color: lightTheme ? "#1F2937" : "#E5E7EB",
           backgroundColor: lightTheme ? "#F9FAFB" : "#111827",
-          borderBottom: "1px solid " + (lightTheme ? "#E5E7EB" : "#374151"),
+          borderBottom: "2px solid " + (lightTheme ? "#E5E7EB" : "#374151"),
+          padding: "20px 24px",
+          textAlign: "center",
         }}>
-          Create New Group
+          ✨ Create New Group
         </DialogTitle>
 
         <DialogContent sx={{
           backgroundColor: lightTheme ? "#FFFFFF" : "#1F2937",
           padding: "24px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "20px",
         }}>
-          <Box sx={{ display: "flex", flexDirection: "row", gap: 3, mt: 2 }}>
-            {/* Group Name Input */}
-            <Box>
-              <label style={{
-                display: "block",
-                marginBottom: "12px",
-                fontSize: "15px",
-                fontWeight: "700",
-                color: lightTheme ? "#1F2937" : "#E5E7EB",
-              }}>
-                Group Name
-              </label>
-              <TextField
-                fullWidth
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                placeholder="Enter group name"
-                variant="outlined"
-                size="medium"
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "8px",
-                    backgroundColor: lightTheme ? "#F9FAFB" : "#111827",
-                    "& fieldset": {
-                      borderColor: lightTheme ? "#D1D5DB" : "#374151",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: lightTheme ? "#1976D2" : "#3B82F6",
-                    },
-                    "&.Focused fieldset": {
-                      borderColor: "#1976D2",
-                    },
-                  },
-                  "& .MuiOutlinedInput-input": {
-                    color: lightTheme ? "#1F2937" : "#E5E7EB",
-                  },
-                  "& .MuiInputBase-input::placeholder": {
-                    color: lightTheme ? "#9CA3AF" : "#6B7280",
-                    opacity: 1,
-                  },
-                  "& .MuiInputLabel-root": {
-                    color: lightTheme ? "#6B7280" : "#9CA3AF",
-                  },
-                }}
-              />
-            </Box>
-
-            {/* Members Selection */}
-            <Box>
-              <label style={{
-                display: "block",
-                marginBottom: "12px",
-                fontSize: "15px",
-                fontWeight: "700",
-                color: lightTheme ? "#1F2937" : "#E5E7EB",
-              }}>
-                Select Members 
-                <span style={{
-                  marginLeft: "8px",
-                  backgroundColor: "#1976D2",
-                  color: "white",
-                  padding: "2px 8px",
+          {/* Group Name Input */}
+          <Box>
+            <label style={{
+              display: "block",
+              marginBottom: "12px",
+              fontSize: "15px",
+              fontWeight: "700",
+              color: lightTheme ? "#1F2937" : "#E5E7EB",
+            }}>
+              Group Name
+            </label>
+            <TextField
+              fullWidth
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              placeholder="Enter group name"
+              variant="outlined"
+              size="medium"
+              autoFocus
+              sx={{
+                "& .MuiOutlinedInput-root": {
                   borderRadius: "12px",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                }}>
-                  {selectedMembers.length}
-                </span>
-              </label>
-
-              {fetchingUsers ? (
-                <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-                  <CircularProgress size={24} />
-                </Box>
-              ) : (
-                <Box sx={{
-                  maxHeight: "320px",
-                  overflowY: "auto",
-                  border: "1px solid " + (lightTheme ? "#E5E7EB" : "#374151"),
-                  borderRadius: "10px",
-                  padding: "12px",
                   backgroundColor: lightTheme ? "#F9FAFB" : "#111827",
-                  scrollbarWidth: "thin",
-                  scrollbarColor: lightTheme ? "#D1D5DB #F9FAFB" : "#4B5563 #111827",
-                }}>
-                  {allUsers.length === 0 ? (
-                    <p style={{
-                      textAlign: "center",
-                      color: lightTheme ? "#9CA3AF" : "#6B7280",
-                      padding: "24px 16px",
-                      fontSize: "14px",
-                    }}>
-                      No users available
-                    </p>
-                  ) : (
-                    allUsers.map((member) => (
-                      <Box
-                        key={member._id}
-                        onClick={() => handleMemberToggle(member._id)}
+                  "& fieldset": {
+                    borderColor: lightTheme ? "#D1D5DB" : "#374151",
+                    borderWidth: "2px",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: lightTheme ? "#1976D2" : "#3B82F6",
+                  },
+                  "&.Focused fieldset": {
+                    borderColor: "#007bff",
+                    boxShadow: "0 0 0 3px rgba(0, 123, 255, 0.1)",
+                  },
+                },
+                "& .MuiOutlinedInput-input": {
+                  color: lightTheme ? "#1F2937" : "#E5E7EB",
+                  fontSize: "15px",
+                },
+                "& .MuiInputBase-input::placeholder": {
+                  color: lightTheme ? "#9CA3AF" : "#6B7280",
+                  opacity: 1,
+                },
+              }}
+            />
+          </Box>
+
+          {/* Members Selection */}
+          <Box>
+            <label style={{
+              display: "block",
+              marginBottom: "12px",
+              fontSize: "15px",
+              fontWeight: "700",
+              color: lightTheme ? "#1F2937" : "#E5E7EB",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}>
+              Select Members 
+              <span style={{
+                backgroundColor: "#007bff",
+                color: "white",
+                padding: "4px 12px",
+                borderRadius: "12px",
+                fontSize: "13px",
+                fontWeight: "600",
+              }}>
+                {selectedMembers.length}
+              </span>
+            </label>
+
+            {fetchingUsers ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+                <CircularProgress size={24} color="inherit" />
+              </Box>
+            ) : (
+              <Box sx={{
+                maxHeight: "280px",
+                overflowY: "auto",
+                border: "2px solid " + (lightTheme ? "#E5E7EB" : "#374151"),
+                borderRadius: "12px",
+                padding: "12px",
+                backgroundColor: lightTheme ? "#F9FAFB" : "#111827",
+                scrollbarWidth: "thin",
+                scrollbarColor: lightTheme ? "#D1D5DB #F9FAFB" : "#4B5563 #111827",
+              }}>
+                {allUsers.length === 0 ? (
+                  <p style={{
+                    textAlign: "center",
+                    color: lightTheme ? "#9CA3AF" : "#6B7280",
+                    padding: "24px 16px",
+                    fontSize: "14px",
+                  }}>
+                    No users available
+                  </p>
+                ) : (
+                  allUsers.map((member) => (
+                    <Box
+                      key={member._id}
+                      onClick={() => handleMemberToggle(member._id)}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "12px",
+                        marginBottom: "8px",
+                        borderRadius: "10px",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        backgroundColor: selectedMembers.includes(member._id)
+                          ? lightTheme ? "#E3F2FD" : "#1E3A5F"
+                          : lightTheme ? "#FFFFFF" : "#1F2937",
+                        border: selectedMembers.includes(member._id)
+                          ? "2px solid #007bff"
+                          : "1px solid transparent",
+                        "&:hover": {
+                          backgroundColor: lightTheme ? "#F0F9FF" : "#243447",
+                          transform: "translateX(4px)",
+                        },
+                      }}
+                    >
+                      <Checkbox
+                        checked={selectedMembers.includes(member._id)}
+                        onChange={() => handleMemberToggle(member._id)}
+                        size="medium"
+                        onClick={(e) => e.stopPropagation()}
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          padding: "12px",
-                          marginBottom: "8px",
-                          borderRadius: "8px",
-                          cursor: "pointer",
-                          transition: "all 0.2s ease",
-                          backgroundColor: selectedMembers.includes(member._id)
-                            ? lightTheme ? "#E3F2FD" : "#1E3A5F"
-                            : lightTheme ? "#FFFFFF" : "#1F2937",
-                          border: selectedMembers.includes(member._id)
-                            ? "2px solid #1976D2"
-                            : "1px solid transparent",
-                          "&:hover": {
-                            backgroundColor: lightTheme ? "#F0F9FF" : "#243447",
+                          color: lightTheme ? "#D1D5DB" : "#6B7280",
+                          "&.Mui-checked": {
+                            color: "#007bff",
                           },
                         }}
-                      >
-                        <Checkbox
-                          checked={selectedMembers.includes(member._id)}
-                          onChange={() => handleMemberToggle(member._id)}
-                          size="medium"
-                          onClick={(e) => e.stopPropagation()}
-                          sx={{
-                            color: lightTheme ? "#D1D5DB" : "#6B7280",
-                            "&.Mui-checked": {
-                              color: "#1976D2",
-                            },
-                          }}
-                        />
-                        <span style={{
-                          marginLeft: "12px",
-                          fontSize: "15px",
-                          fontWeight: "500",
-                          color: lightTheme ? "#1F2937" : "#E5E7EB",
-                          flex: 1,
-                        }}>
-                          {member.name}
-                        </span>
-                      </Box>
-                    ))
-                  )}
-                </Box>
-              )}
-            </Box>
+                      />
+                      <span style={{
+                        marginLeft: "12px",
+                        fontSize: "15px",
+                        fontWeight: "500",
+                        color: lightTheme ? "#1F2937" : "#E5E7EB",
+                        flex: 1,
+                      }}>
+                        {member.name}
+                      </span>
+                    </Box>
+                  ))
+                )}
+              </Box>
+            )}
           </Box>
         </DialogContent>
 
         <DialogActions sx={{
           backgroundColor: lightTheme ? "#F9FAFB" : "#111827",
-          borderTop: "1px solid " + (lightTheme ? "#E5E7EB" : "#374151"),
-          padding: "16px",
+          borderTop: "2px solid " + (lightTheme ? "#E5E7EB" : "#374151"),
+          padding: "16px 24px",
           gap: "12px",
+          justifyContent: "space-between",
         }}>
           <Button
             onClick={handleClose}
@@ -307,12 +316,14 @@ function CreateGroups() {
               borderColor: lightTheme ? "#D1D5DB" : "#4B5563",
               color: lightTheme ? "#1F2937" : "#E5E7EB",
               textTransform: "none",
-              borderRadius: "8px",
+              borderRadius: "10px",
               fontSize: "15px",
               fontWeight: "600",
               padding: "10px 24px",
+              border: "2px solid",
               "&:hover": {
                 backgroundColor: lightTheme ? "#F3F4F6" : "#1F2937",
+                borderColor: lightTheme ? "#9CA3AF" : "#6B7280",
               },
             }}
           >
@@ -323,18 +334,20 @@ function CreateGroups() {
             variant="contained"
             disabled={loading || !groupName.trim() || selectedMembers.length === 0}
             sx={{
-              backgroundColor: "#1976D2",
+              background: "linear-gradient(135deg, #22c55e, #16a34a)",
               color: "white",
               textTransform: "none",
-              borderRadius: "8px",
+              borderRadius: "10px",
               fontSize: "15px",
-              fontWeight: "600",
+              fontWeight: "700",
               padding: "10px 24px",
-              "&:hover": {
-                backgroundColor: "#1565C0",
+              "&:hover:not(:disabled)": {
+                background: "linear-gradient(135deg, #16a34a, #15803d)",
+                transform: "translateY(-2px)",
+                boxShadow: "0 6px 16px rgba(34, 197, 94, 0.3)",
               },
               "&:disabled": {
-                backgroundColor: "#D1D5DB",
+                background: "#D1D5DB",
                 color: "#9CA3AF",
               },
             }}
@@ -347,23 +360,18 @@ function CreateGroups() {
 
       <button
         onClick={handleClickOpen}
-        className={"addconv-btn" + (lightTheme ? "" : " dark")}
+        className="new-group-btn"
         style={{
-          backgroundColor: "#0084FF",
-          color: "white",
-          border: "none",
-          padding: "10px 20px",
-          borderRadius: "6px",
-          fontSize: "14px",
-          fontWeight: "600",
-          cursor: "pointer",
-          transition: "all 0.2s ease",
+          width: "100%",
           marginTop: "12px",
+          fontSize: "18px",
+          padding: "16px",
+          fontWeight: "700",
+          letterSpacing: "0.5px",
+          boxShadow: "0 8px 24px rgba(0, 212, 255, 0.6)",
         }}
-        onMouseOver={(e) => e.target.style.backgroundColor = "#0073E6"}
-        onMouseOut={(e) => e.target.style.backgroundColor = "#0084FF"}
       >
-        Create Group
+        ➕ Create New Group
       </button>
     </>
   );

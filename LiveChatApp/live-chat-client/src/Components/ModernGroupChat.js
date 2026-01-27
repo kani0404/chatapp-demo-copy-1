@@ -144,9 +144,25 @@ function ModernGroupChat() {
       },
     };
 
+    // Save content before clearing
+    const tempContent = messageContent;
+
+    // Create message object to show immediately
+    const newMessage = {
+      _id: Date.now(),
+      sender: { _id: user._id, name: user.name },
+      content: tempContent,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Add message to state immediately for instant display
+    setMessages((prevMessages) => [...prevMessages, newMessage]);
+    setMessageContent("");
+
+    // Send to server
     axios
       .post("http://localhost:8080/group/message/send", {
-        content: messageContent,
+        content: tempContent,
         groupId: groupId,
       }, config)
       .then((response) => {
@@ -155,15 +171,15 @@ function ModernGroupChat() {
             groupId: groupId,
             senderId: user._id,
             senderName: user.name,
-            content: messageContent,
+            content: tempContent,
             timestamp: new Date().toISOString(),
           });
         }
-        setMessages([...messages, response.data]);
-        setMessageContent("");
       })
       .catch((error) => {
         console.error("Error:", error);
+        // Remove the temporary message if sending fails
+        setMessages((prevMessages) => prevMessages.filter(m => m._id !== newMessage._id));
       });
   };
 
@@ -386,30 +402,31 @@ function ModernGroupChat() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
-                <div
-                  style={{
-                    width: "44px",
-                    height: "44px",
-                    borderRadius: "50%",
-                    background: "linear-gradient(135deg, #1976D2, #1565C0)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "white",
-                    fontSize: "18px",
-                    fontWeight: "700",
-                  }}
-                >
-                  {group.groupName.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h3 style={{ margin: "0", fontSize: "15px", fontWeight: "700", color: "#1F2937" }}>
-                    {group.groupName}
-                  </h3>
-                  <p style={{ margin: "0", fontSize: "12px", color: "#10B981" }}>
-                    {onlineMembers.length} online
-                  </p>
-                </div>
+              <div
+                style={{
+                  width: "56px",
+                  height: "56px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #3B82F6, #1E40AF)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "white",
+                  fontSize: "24px",
+                  fontWeight: "700",
+                  boxShadow: "0 4px 12px rgba(59, 130, 246, 0.4)",
+                }}
+              >
+                {group.groupName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h3 style={{ margin: "0", fontSize: "16px", fontWeight: "700", color: "#1F2937" }}>
+                  {group.groupName}
+                </h3>
+                <p style={{ margin: "0", fontSize: "13px", color: "#22c55e", fontWeight: "500" }}>
+                  🟢 {onlineMembers.length} online
+                </p>
+              </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                 <IconButton
@@ -498,11 +515,13 @@ function ModernGroupChat() {
                         {!isOwnMessage && (
                           <p
                             style={{
-                              margin: "0 0 6px 0",
-                              fontSize: "13px",
+                              margin: "0 0 8px 0",
+                              fontSize: "14px",
                               fontWeight: "700",
-                              color: "#0084FF",
+                              color: "#60a5fa",
                               paddingLeft: "8px",
+                              textTransform: "capitalize",
+                              letterSpacing: "0.3px",
                             }}
                           >
                             {message.sender.name}
@@ -510,16 +529,20 @@ function ModernGroupChat() {
                         )}
                         <div
                           style={{
-                            backgroundColor: isOwnMessage ? "#1976D2" : "#FFFFFF",
-                            color: isOwnMessage ? "#FFFFFF" : "#1F2937",
-                            padding: "12px 16px",
-                            borderRadius: isOwnMessage ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                            background: isOwnMessage 
+                              ? "linear-gradient(135deg, #007bff, #0056b3)"
+                              : "#dbeafe",
+                            color: isOwnMessage ? "#FFFFFF" : "#0c4a6e",
+                            padding: "14px 18px",
+                            borderRadius: "18px",
                             wordBreak: "break-word",
-                            lineHeight: "1.5",
-                            fontSize: "15px",
+                            lineHeight: "1.6",
+                            fontSize: "16px",
+                            fontWeight: "500",
                             boxShadow: isOwnMessage 
-                              ? "0 1px 3px rgba(25, 118, 210, 0.2)" 
-                              : "0 1px 2px rgba(0,0,0,0.05)",
+                              ? "0 2px 8px rgba(0, 84, 255, 0.4)" 
+                              : "0 2px 8px rgba(59, 130, 246, 0.2)",
+                            maxWidth: "65%",
                           }}
                         >
                           {message.content}

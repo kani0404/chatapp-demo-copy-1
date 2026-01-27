@@ -17,18 +17,27 @@ const allMessages = expressAsyncHandler(async (req, res) => {
 });
 
 const sendMessage = expressAsyncHandler(async (req, res) => {
-  const { content, chatId } = req.body;
+  const { content, chatId, file } = req.body;
 
-  if (!content || !chatId) {
+  if (!chatId || (!content && !file)) {
     console.log("Invalid data passed into request");
     return res.sendStatus(400);
   }
 
   var newMessage = {
     sender: req.user._id,
-    content: content,
+    content: content || "",
     chat: chatId,
   };
+
+  if (file) {
+    newMessage.file = {
+      originalName: file.originalName,
+      mimeType: file.mimeType,
+      size: file.size,
+      base64: file.base64,
+    };
+  }
 
   try {
     var message = await Message.create(newMessage);

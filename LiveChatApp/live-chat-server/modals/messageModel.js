@@ -18,6 +18,12 @@ const messageModel = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Chat",
     },
+    file: {
+      originalName: String,
+      mimeType: String,
+      size: Number,
+      base64: String,
+    },
   },
   {
     timeStamp: true,

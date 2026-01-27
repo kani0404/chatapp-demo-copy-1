@@ -103,6 +103,12 @@ function Sidebar() {
             onClick={() => {
               dispatch(toggleTheme());
             }}
+            sx={{
+              transition: "all 0.3s ease",
+              "&:hover": {
+                transform: "rotate(20deg)",
+              },
+            }}
           >
             {lightTheme && (
               <NightlightIcon
