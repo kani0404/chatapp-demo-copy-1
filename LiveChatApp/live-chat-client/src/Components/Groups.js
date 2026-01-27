@@ -1,34 +1,30 @@
 import React, { useContext, useEffect, useState } from "react";
-import "./myStyles.css";
 import SearchIcon from "@mui/icons-material/Search";
 import { IconButton } from "@mui/material";
-import logo from "../Images/live-chat_512px.png";
-import { useDispatch, useSelector } from "react-redux";
-import { AnimatePresence, motion } from "framer-motion";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { refreshSidebarFun } from "../Features/refreshSidebar";
 import { myContext } from "./MainContainer";
+import { motion, AnimatePresence } from "framer-motion";
+import "./myStyles.css";
 
 function Groups() {
-  // const [refresh, setRefresh] = useState(true);
   const { refresh, setRefresh } = useContext(myContext);
-
-  const lightTheme = useSelector((state) => state.themeKey);
-  const dispatch = useDispatch();
-  const [groups, SetGroups] = useState([]);
+  const lightTheme = true; // Force light theme for professional look
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
   const userData = JSON.parse(localStorage.getItem("userData"));
-  // console.log("Data from LocalStorage : ", userData);
   const nav = useNavigate();
+
   if (!userData) {
     console.log("User not Authenticated");
     nav("/");
   }
 
   const user = userData.data;
+
   useEffect(() => {
-    console.log("Users refreshed : ", user.token);
+    setLoading(true);
     const config = {
       headers: {
         Authorization: `Bearer ${user.token}`,
@@ -36,86 +32,206 @@ function Groups() {
     };
 
     axios
-      .get("http://localhost:8080/chat/fetchGroups", config)
+      .get("http://localhost:8080/group/", config)
       .then((response) => {
         console.log("Group Data from API ", response.data);
-        SetGroups(response.data);
+        setGroups(response.data || []);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error fetching groups:", error);
+        setLoading(false);
       });
-  }, [refresh]);
+  }, [refresh, user.token]);
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, scale: 0 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0 }}
-        transition={{
-          ease: "anticipate",
-          duration: "0.3",
-        }}
-        className="list-container"
-      >
-        <div className={"ug-header" + (lightTheme ? "" : " dark")}>
-          <img
-            src={logo}
-            style={{ height: "2rem", width: "2rem", marginLeft: "10px" }}
-          />
-          <p className={"ug-title" + (lightTheme ? "" : " dark")}>
-            Available Groups
-          </p>
-          <IconButton
-            className={"icon" + (lightTheme ? "" : " dark")}
-            onClick={() => {
-              setRefresh(!refresh);
-            }}
-          >
-            <RefreshIcon />
-          </IconButton>
-        </div>
-        <div className={"sb-search" + (lightTheme ? "" : " dark")}>
-          <IconButton className={"icon" + (lightTheme ? "" : " dark")}>
-            <SearchIcon />
-          </IconButton>
+    <div style={{
+      flex: "0.7",
+      display: "flex",
+      flexDirection: "column",
+      height: "100%",
+      backgroundColor: lightTheme ? "#FFFFFF" : "#0F172A",
+    }}>
+      {/* Header */}
+      <div style={{
+        backgroundColor: lightTheme ? "#F9FAFB" : "#111827",
+        borderBottom: "1px solid " + (lightTheme ? "#E5E7EB" : "#374151"),
+        padding: "16px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+      }}>
+        <h2 style={{
+          margin: "0",
+          fontSize: "18px",
+          fontWeight: "600",
+          color: lightTheme ? "#1F2937" : "#E5E7EB",
+        }}>
+          Groups
+        </h2>
+        <IconButton
+          onClick={() => setRefresh(!refresh)}
+          sx={{
+            color: lightTheme ? "#6B7280" : "#9CA3AF",
+            "&:hover": {
+              backgroundColor: lightTheme ? "#F3F4F6" : "#1F2937",
+            },
+          }}
+        >
+          <RefreshIcon />
+        </IconButton>
+      </div>
+
+      {/* Search Bar */}
+      <div style={{
+        backgroundColor: lightTheme ? "#FFFFFF" : "#111827",
+        borderBottom: "1px solid " + (lightTheme ? "#E5E7EB" : "#374151"),
+        padding: "12px 16px",
+      }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          backgroundColor: lightTheme ? "#F3F4F6" : "#1F2937",
+          borderRadius: "24px",
+          padding: "8px 12px",
+          border: "1px solid " + (lightTheme ? "#D1D5DB" : "#374151"),
+        }}>
+          <SearchIcon sx={{ color: lightTheme ? "#9CA3AF" : "#6B7280", fontSize: "20px" }} />
           <input
-            placeholder="Search"
-            className={"search-box" + (lightTheme ? "" : " dark")}
+            placeholder="Search groups..."
+            style={{
+              border: "none",
+              backgroundColor: "transparent",
+              outline: "none",
+              fontSize: "14px",
+              flex: 1,
+              color: lightTheme ? "#1F2937" : "#E5E7EB",
+            }}
           />
         </div>
-        <div className="ug-list">
-          {groups.map((group, index) => {
-            return (
+      </div>
+
+      {/* Groups List */}
+      <div style={{
+        flex: 1,
+        overflowY: "auto",
+        padding: "8px",
+        backgroundColor: lightTheme ? "#FFFFFF" : "#0F172A",
+        scrollbarWidth: "thin",
+        scrollbarColor: lightTheme ? "#D1D5DB #FFFFFF" : "#4B5563 #0F172A",
+      }}>
+        {loading ? (
+          <div style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100%",
+            color: lightTheme ? "#9CA3AF" : "#6B7280",
+          }}>
+            <p>Loading groups...</p>
+          </div>
+        ) : groups.length === 0 ? (
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100%",
+            color: lightTheme ? "#9CA3AF" : "#6B7280",
+            gap: "12px",
+          }}>
+            <p style={{ fontSize: "14px" }}>No groups yet</p>
+            <p style={{ fontSize: "12px" }}>Create a new group to get started</p>
+          </div>
+        ) : (
+          <AnimatePresence>
+            {groups.map((group, index) => (
               <motion.div
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
-                className={"list-tem" + (lightTheme ? "" : " dark")}
-                key={index}
-                onClick={() => {
-                  console.log("Creating chat with group", group.name);
-                  // const config = {
-                  //   headers: {
-                  //     Authorization: `Bearer ${userData.data.token}`,
-                  //   },
-                  // };
-                  // axios.post(
-                  //   "http://localhost:8080/chat/",
-                  //   {
-                  //     userId: user._id,
-                  //   },
-                  //   config
-                  // );
-                  dispatch(refreshSidebarFun());
+                key={group._id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ delay: index * 0.05 }}
+                onClick={() => nav(`/app/group/${group._id}`)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  padding: "12px",
+                  margin: "6px 0",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  backgroundColor: lightTheme ? "#F9FAFB" : "#1F2937",
+                  border: "1px solid " + (lightTheme ? "#E5E7EB" : "#374151"),
+                  transition: "all 0.2s ease",
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = lightTheme ? "#F3F4F6" : "#374151";
+                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.1)";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = lightTheme ? "#F9FAFB" : "#1F2937";
+                  e.currentTarget.style.boxShadow = "none";
                 }}
               >
-                <p className={"con-icon" + (lightTheme ? "" : " dark")}>T</p>
-                <p className={"con-title" + (lightTheme ? "" : " dark")}>
-                  {group.chatName}
-                </p>
+                {/* Group Avatar */}
+                <div style={{
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #3B82F6, #1E40AF)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "white",
+                  fontSize: "18px",
+                  fontWeight: "600",
+                  flexShrink: 0,
+                }}>
+                  {group.groupName.charAt(0).toUpperCase()}
+                </div>
+
+                {/* Group Info */}
+                <div style={{ flex: 1 }}>
+                  <h4 style={{
+                    margin: "0 0 4px 0",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    color: lightTheme ? "#1F2937" : "#E5E7EB",
+                  }}>
+                    {group.groupName}
+                  </h4>
+                  <p style={{
+                    margin: "0",
+                    fontSize: "12px",
+                    color: lightTheme ? "#9CA3AF" : "#6B7280",
+                  }}>
+                    {group.members.length} member{group.members.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+
+                {/* Last Message Preview */}
+                {group.latestMessage && (
+                  <div style={{
+                    fontSize: "12px",
+                    color: lightTheme ? "#6B7280" : "#9CA3AF",
+                    textAlign: "right",
+                    maxWidth: "120px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {group.latestMessage.content}
+                  </div>
+                )}
               </motion.div>
-            );
-          })}
-        </div>
-      </motion.div>
-    </AnimatePresence>
+            ))}
+          </AnimatePresence>
+        )}
+      </div>
+    </div>
   );
 }
 
