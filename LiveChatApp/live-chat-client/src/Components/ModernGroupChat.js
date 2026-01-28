@@ -12,6 +12,7 @@ import {
   MoreVert as MoreIcon,
   Search as SearchIcon,
   Add as AddIcon,
+  ArrowBack as ArrowBackIcon,
 } from "@mui/icons-material";
 import { IconButton } from "@mui/material";
 import EmojiPicker from "emoji-picker-react";
@@ -53,13 +54,13 @@ function MessageBubble({ message, user, isOwnMessage, onDelete }) {
       );
     } else if (status === "delivered") {
       return (
-        <span style={{ color: "#06b6d4", fontSize: "12px", marginLeft: "4px" }}>
+        <span style={{ color: "#10b981", fontSize: "12px", marginLeft: "4px" }}>
           ✓✓
         </span>
       );
     } else if (status === "read") {
       return (
-        <span style={{ color: "#a855f7", fontSize: "12px", marginLeft: "4px", fontWeight: "bold" }}>
+        <span style={{ color: "#3b82f6", fontSize: "12px", marginLeft: "4px", fontWeight: "bold" }}>
           ✓✓
         </span>
       );
@@ -188,7 +189,6 @@ function ModernGroupChat() {
   const { groupId } = useParams();
   const nav = useNavigate();
   const { refresh } = useContext(myContext);
-  const lightTheme = useSelector((state) => state.themeKey);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -211,6 +211,10 @@ function ModernGroupChat() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const leaveGroup = () => {
+    nav(-1);
   };
 
   useEffect(() => {
@@ -672,9 +676,22 @@ function ModernGroupChat() {
                 justifyContent: "space-between",
                 boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
                 backdropFilter: "blur(10px)",
+                position: "sticky",
+                top: 0,
+                zIndex: 100,
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
+              <IconButton
+                onClick={leaveGroup}
+                sx={{
+                  color: "#6366f1",
+                  "&:hover": { backgroundColor: "rgba(99, 102, 241, 0.1)" },
+                }}
+                title="Leave Group"
+              >
+                <ArrowBackIcon />
+              </IconButton>
               <div
                 style={{
                   width: "56px",
