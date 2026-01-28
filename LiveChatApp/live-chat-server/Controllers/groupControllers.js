@@ -265,6 +265,46 @@ const leaveGroup = asyncHandler(async (req, res) => {
   }
 });
 
+// Delete a group message
+const deleteGroupMessage = asyncHandler(async (req, res) => {
+  const { messageId } = req.params;
+
+  if (!messageId) {
+    res.status(400);
+    throw new Error("Message ID required");
+  }
+
+  try {
+    const message = await GroupMessage.findById(messageId);
+
+    if (!message) {
+      res.status(404);
+      throw new Error("Message not found");
+    }
+
+    // Only allow deletion by sender
+    if (message.sender.toString() !== req.user._id.toString()) {
+      res.status(403);
+      throw new Error("Not authorized to delete this message");
+    }
+
+    const groupId = message.group;
+
+    await GroupMessage.findByIdAndDelete(messageId);
+
+    // Update group's latestMessage if this was the last message
+    const latestMessage = await GroupMessage.findOne({ group: groupId }).sort({ createdAt: -1 });
+    await Group.findByIdAndUpdate(groupId, {
+      latestMessage: latestMessage ? latestMessage._id : null
+    });
+
+    res.json({ message: "Message deleted successfully" });
+  } catch (error) {
+    res.status(400);
+    throw new Error(error.message);
+  }
+});
+
 module.exports = {
   createGroup,
   getGroupsForUser,
@@ -273,4 +313,5 @@ module.exports = {
   addMemberToGroup,
   removeMemberFromGroup,
   leaveGroup,
+  deleteGroupMessage,
 };

@@ -62,6 +62,23 @@ function ChatArea() {
       });
   };
 
+  const handleDeleteMessage = (messageId) => {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${userData.data.token}`,
+      },
+    };
+    axios
+      .delete(`http://localhost:8080/message/${messageId}`, config)
+      .then(() => {
+        console.log("Message deleted successfully");
+        setAllMessages(allMessages.filter(msg => msg._id !== messageId));
+      })
+      .catch((error) => {
+        console.error("Error deleting message:", error);
+      });
+  };
+
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -207,10 +224,26 @@ function ChatArea() {
       // You can update user online status here if needed
     });
 
+    // Mark received messages as read when viewing the chat
+    allMessages.forEach((msg) => {
+      if (msg.sender._id !== userData.data._id && msg.status !== "read") {
+        socket.emit("message_read", { messageId: msg._id });
+        axios.post(
+          "http://localhost:8080/message/read/mark",
+          { messageId: msg._id },
+          {
+            headers: {
+              Authorization: `Bearer ${userData.data.token}`,
+            },
+          }
+        ).catch((error) => console.error("Error marking message as read:", error));
+      }
+    });
+
     return () => {
       socket.disconnect();
     };
-  }, [userData.data._id]);
+  }, [userData.data._id, allMessages, userData.data.token]);
 
   if (!loaded) {
     return (
@@ -319,7 +352,7 @@ function ChatArea() {
               const self_id = userData.data._id;
               if (sender._id === self_id) {
                 // console.log("I sent it ");
-                return <MessageSelf props={message} key={index} />;
+                return <MessageSelf props={message} key={index} onDelete={handleDeleteMessage} />;
               } else {
                 // console.log("Someone Sent it");
                 return <MessageOthers props={message} key={index} />;

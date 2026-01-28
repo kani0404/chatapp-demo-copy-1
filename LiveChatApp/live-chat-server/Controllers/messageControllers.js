@@ -105,4 +105,41 @@ const markMessageAsRead = expressAsyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { allMessages, sendMessage, updateMessageStatus, markMessageAsRead };
+// Delete message
+const deleteMessage = expressAsyncHandler(async (req, res) => {
+  const { messageId } = req.params;
+
+  if (!messageId) {
+    return res.status(400).json({ message: "Message ID required" });
+  }
+
+  try {
+    const message = await Message.findById(messageId);
+    
+    if (!message) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    // Only allow deletion by sender
+    if (message.sender.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Not authorized to delete this message" });
+    }
+
+    const chatId = message.chat;
+
+    await Message.findByIdAndDelete(messageId);
+
+    // Update chat's latestMessage if this was the last message
+    const latestMessage = await Message.findOne({ chat: chatId }).sort({ createdAt: -1 });
+    await Chat.findByIdAndUpdate(chatId, {
+      latestMessage: latestMessage ? latestMessage._id : null
+    });
+
+    res.json({ message: "Message deleted successfully" });
+  } catch (error) {
+    res.status(400);
+    throw new Error(error.message);
+  }
+});
+
+module.exports = { allMessages, sendMessage, updateMessageStatus, markMessageAsRead, deleteMessage };

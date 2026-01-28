@@ -18,6 +18,172 @@ import EmojiPicker from "emoji-picker-react";
 import io from "socket.io-client";
 import "./myStyles.css";
 
+// Separate component to manage message state properly
+function MessageBubble({ message, user, isOwnMessage, onDelete }) {
+  const [showDeleteOption, setShowDeleteOption] = useState(false);
+  const [longPressTimer, setLongPressTimer] = useState(null);
+
+  const handleMouseDown = () => {
+    const timer = setTimeout(() => {
+      setShowDeleteOption(true);
+    }, 500);
+    setLongPressTimer(timer);
+  };
+
+  const handleMouseUp = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setShowDeleteOption(false);
+    onDelete(message._id);
+  };
+
+  const MessageTicks = ({ status }) => {
+    if (status === "sent") {
+      return (
+        <span style={{ color: "#06b6d4", fontSize: "12px", marginLeft: "4px" }}>
+          ✓
+        </span>
+      );
+    } else if (status === "delivered") {
+      return (
+        <span style={{ color: "#06b6d4", fontSize: "12px", marginLeft: "4px" }}>
+          ✓✓
+        </span>
+      );
+    } else if (status === "read") {
+      return (
+        <span style={{ color: "#a855f7", fontSize: "12px", marginLeft: "4px", fontWeight: "bold" }}>
+          ✓✓
+        </span>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: isOwnMessage ? "flex-end" : "flex-start",
+        marginBottom: "16px",
+        animation: "slideIn 0.3s ease",
+        width: "100%",
+        paddingLeft: isOwnMessage ? "0" : "0",
+        paddingRight: isOwnMessage ? "0" : "0",
+        position: "relative",
+      }}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+    >
+      <div
+        style={{
+          maxWidth: "70%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: isOwnMessage ? "flex-end" : "flex-start",
+          gap: "6px",
+          position: "relative",
+        }}
+      >
+        {!isOwnMessage && (
+          <p
+            style={{
+              margin: "0 0 4px 0",
+              fontSize: "13px",
+              fontWeight: "700",
+              color: "#06b6d4",
+              paddingLeft: "8px",
+              textTransform: "capitalize",
+              letterSpacing: "0.3px",
+            }}
+          >
+            {message.sender.name}
+          </p>
+        )}
+        <div
+          style={{
+            background: isOwnMessage 
+              ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
+              : "rgba(99, 102, 241, 0.12)",
+            color: isOwnMessage ? "#f0f2f5" : "#f0f2f5",
+            padding: "12px 16px",
+            borderRadius: "16px",
+            wordBreak: "break-word",
+            lineHeight: "1.5",
+            fontSize: "15px",
+            fontWeight: "500",
+            boxShadow: isOwnMessage 
+              ? "0 4px 12px rgba(99, 102, 241, 0.3)" 
+              : "0 2px 8px rgba(99, 102, 241, 0.15)",
+            display: "flex",
+            alignItems: "flex-end",
+            gap: "4px",
+          }}
+        >
+          <span>{message.content}</span>
+          {isOwnMessage && <MessageTicks status={message.status} />}
+        </div>
+
+        {/* Delete option on long press */}
+        {showDeleteOption && isOwnMessage && (
+          <div
+            style={{
+              position: "absolute",
+              top: "-30px",
+              right: "0",
+              backgroundColor: "#ef4444",
+              color: "#ffffff",
+              padding: "4px 12px",
+              borderRadius: "6px",
+              fontSize: "12px",
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+              whiteSpace: "nowrap",
+              zIndex: 100,
+              transition: "all 0.2s ease",
+            }}
+            onClick={handleDelete}
+            onMouseEnter={(e) => {
+              e.stopPropagation();
+              e.target.style.backgroundColor = "#dc2626";
+              e.target.style.transform = "scale(1.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.stopPropagation();
+              e.target.style.backgroundColor = "#ef4444";
+              e.target.style.transform = "scale(1)";
+            }}
+          >
+            🗑️ Delete
+          </div>
+        )}
+
+        <p
+          style={{
+            margin: "0",
+            fontSize: "11px",
+            color: "rgba(240, 242, 245, 0.5)",
+            paddingLeft: isOwnMessage ? "0" : "8px",
+            paddingRight: isOwnMessage ? "8px" : "0",
+          }}
+        >
+          {new Date(message.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ModernGroupChat() {
   const { groupId } = useParams();
   const nav = useNavigate();
@@ -122,6 +288,15 @@ function ModernGroupChat() {
       }
     });
 
+    newSocket.on("message_read", (data) => {
+      console.log("Message read:", data.messageId);
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === data.messageId ? { ...msg, status: "read" } : msg
+        )
+      );
+    });
+
     setSocket(newSocket);
     return () => {
       if (newSocket) {
@@ -167,6 +342,13 @@ function ModernGroupChat() {
         setLoading(false);
       });
   }, [groupId, refresh]);
+
+  // Mark messages as read when viewing the group chat
+  useEffect(() => {
+    if (messages.length > 0 && user) {
+      handleMarkMessagesAsRead();
+    }
+  }, [messages, user]);
 
   const sendMessage = () => {
     if (!messageContent.trim()) return;
@@ -245,6 +427,44 @@ function ModernGroupChat() {
         userName: user.name,
       });
     }
+  };
+
+  const handleDeleteMessage = (messageId) => {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${user.token}`,
+      },
+    };
+    axios
+      .delete(`http://localhost:8080/group/message/${messageId}`, config)
+      .then(() => {
+        console.log("Message deleted successfully");
+        setMessages(messages.filter(msg => msg._id !== messageId));
+      })
+      .catch((error) => {
+        console.error("Error deleting message:", error);
+      });
+  };
+
+  const handleMarkMessagesAsRead = () => {
+    const config = {
+      headers: {
+        Authorization: `Bearer ${user.token}`,
+      },
+    };
+    
+    messages.forEach((msg) => {
+      if (msg.sender._id !== user._id && msg.status !== "read") {
+        if (socket) {
+          socket.emit("message_read", { messageId: msg._id });
+        }
+        axios.post(
+          "http://localhost:8080/message/read/mark",
+          { messageId: msg._id },
+          config
+        ).catch((error) => console.error("Error marking message as read:", error));
+      }
+    });
   };
 
   const filteredGroups = allGroups.filter((g) =>
@@ -546,82 +766,15 @@ function ModernGroupChat() {
                   <p style={{ fontSize: "15px", fontWeight: "500" }}>No messages yet. Start the conversation!</p>
                 </div>
               ) : (
-                messages.map((message, index) => {
-                  const isOwnMessage = message.sender._id === user._id;
-                  return (
-                    <div
-                      key={index}
-                      style={{
-                        display: "flex",
-                        justifyContent: isOwnMessage ? "flex-end" : "flex-start",
-                        marginBottom: "16px",
-                        animation: "slideIn 0.3s ease",
-                        width: "100%",
-                        paddingLeft: isOwnMessage ? "0" : "0",
-                        paddingRight: isOwnMessage ? "0" : "0",
-                      }}
-                    >
-                      <div
-                        style={{
-                          maxWidth: "70%",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: isOwnMessage ? "flex-end" : "flex-start",
-                          gap: "6px",
-                        }}
-                      >
-                        {!isOwnMessage && (
-                          <p
-                            style={{
-                              margin: "0 0 4px 0",
-                              fontSize: "13px",
-                              fontWeight: "700",
-                              color: "#06b6d4",
-                              paddingLeft: "8px",
-                              textTransform: "capitalize",
-                              letterSpacing: "0.3px",
-                            }}
-                          >
-                            {message.sender.name}
-                          </p>
-                        )}
-                        <div
-                          style={{
-                            background: isOwnMessage 
-                              ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
-                              : "rgba(99, 102, 241, 0.12)",
-                            color: isOwnMessage ? "#f0f2f5" : "#f0f2f5",
-                            padding: "12px 16px",
-                            borderRadius: "16px",
-                            wordBreak: "break-word",
-                            lineHeight: "1.5",
-                            fontSize: "15px",
-                            fontWeight: "500",
-                            boxShadow: isOwnMessage 
-                              ? "0 4px 12px rgba(99, 102, 241, 0.3)" 
-                              : "0 2px 8px rgba(99, 102, 241, 0.15)",
-                          }}
-                        >
-                          {message.content}
-                        </div>
-                        <p
-                          style={{
-                            margin: "0",
-                            fontSize: "11px",
-                            color: "rgba(240, 242, 245, 0.5)",
-                            paddingLeft: isOwnMessage ? "0" : "8px",
-                            paddingRight: isOwnMessage ? "8px" : "0",
-                          }}
-                        >
-                          {new Date(message.createdAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })
+                messages.map((message) => (
+                  <MessageBubble
+                    key={message._id}
+                    message={message}
+                    user={user}
+                    isOwnMessage={message.sender._id === user._id}
+                    onDelete={handleDeleteMessage}
+                  />
+                ))
               )}
 
               {/* Typing Indicator */}

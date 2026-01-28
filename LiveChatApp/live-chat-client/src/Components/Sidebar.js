@@ -185,7 +185,7 @@ function Sidebar() {
             return <div key={index}></div>;
           }
 
-          if (conversation.latestMessage === undefined) {
+          if (conversation.latestMessage === undefined || conversation.latestMessage === null) {
             // console.log("No Latest Message with ", otherUser);
             return (
               <div
@@ -247,7 +247,7 @@ function Sidebar() {
                 </p>
 
                 <p className="con-lastMessage">
-                  {conversation.latestMessage.content}
+                  {conversation.latestMessage?.content || "No messages yet"}
                 </p>
                 {/* <p className={"con-timeStamp" + (lightTheme ? "" : " dark")}>
                 {conversation.timeStamp}

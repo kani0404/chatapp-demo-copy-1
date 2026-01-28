@@ -7,6 +7,7 @@ const {
   addMemberToGroup,
   removeMemberFromGroup,
   leaveGroup,
+  deleteGroupMessage,
 } = require("../Controllers/groupControllers");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -17,6 +18,7 @@ router.post("/create", protect, createGroup);
 router.get("/", protect, getGroupsForUser);
 router.post("/message/send", protect, sendGroupMessage);
 router.get("/:groupId/messages", protect, getGroupMessages);
+router.delete("/message/:messageId", protect, deleteGroupMessage);
 
 // Member operations
 router.post("/:groupId/add-member", protect, addMemberToGroup);

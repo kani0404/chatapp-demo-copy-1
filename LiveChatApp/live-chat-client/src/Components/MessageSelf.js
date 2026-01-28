@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 
-function MessageSelf({ props }) {
+function MessageSelf({ props, onDelete }) {
   // console.log("Message self Prop : ", props);
+  const [showDeleteOption, setShowDeleteOption] = useState(false);
+  const [longPressTimer, setLongPressTimer] = useState(null);
 
   const isImage = (mimeType) => mimeType && mimeType.startsWith('image/');
   const isDocument = (mimeType) => {
@@ -15,6 +17,42 @@ function MessageSelf({ props }) {
     link.href = `data:${mimeType};base64,${base64}`;
     link.download = fileName;
     link.click();
+  };
+
+  // Long press handler
+  const handleMouseDown = () => {
+    const timer = setTimeout(() => {
+      setShowDeleteOption(true);
+    }, 500);
+    setLongPressTimer(timer);
+  };
+
+  const handleMouseUp = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  const handleTouchStart = () => {
+    const timer = setTimeout(() => {
+      setShowDeleteOption(true);
+    }, 500);
+    setLongPressTimer(timer);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  const handleDelete = () => {
+    setShowDeleteOption(false);
+    if (onDelete) {
+      onDelete(props._id);
+    }
   };
 
   // Message tick indicator component
@@ -42,7 +80,14 @@ function MessageSelf({ props }) {
   };
 
   return (
-    <div className="self-message-container">
+    <div 
+      className="self-message-container"
+      style={{ position: "relative" }}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <div className="messageBox" style={{display: "flex", flexDirection: "column", gap: "8px"}}>
         {props.content && (
           <div style={{ display: "flex", alignItems: "flex-end", gap: "4px" }}>
@@ -90,6 +135,38 @@ function MessageSelf({ props }) {
           </div>
         )}
       </div>
+      
+      {/* Delete option on long press */}
+      {showDeleteOption && (
+        <div
+          style={{
+            position: "absolute",
+            top: "-30px",
+            right: "0",
+            backgroundColor: "#ef4444",
+            color: "#ffffff",
+            padding: "4px 12px",
+            borderRadius: "6px",
+            fontSize: "12px",
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+            whiteSpace: "nowrap",
+            zIndex: 100,
+            transition: "all 0.2s ease",
+          }}
+          onClick={handleDelete}
+          onMouseEnter={(e) => {
+            e.target.style.backgroundColor = "#dc2626";
+            e.target.style.transform = "scale(1.05)";
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.backgroundColor = "#ef4444";
+            e.target.style.transform = "scale(1)";
+          }}
+        >
+          🗑️ Delete
+        </div>
+      )}
     </div>
   );
 }
