@@ -19,7 +19,10 @@ const allMessages = expressAsyncHandler(async (req, res) => {
 const sendMessage = expressAsyncHandler(async (req, res) => {
   const { content, chatId, file } = req.body;
 
-  if (!chatId || (!content && !file)) {
+  // Support multipart file via multer as req.file
+  const uploaded = req.file;
+
+  if (!chatId || (!content && !file && !uploaded)) {
     console.log("Invalid data passed into request");
     return res.sendStatus(400);
   }
@@ -31,7 +34,17 @@ const sendMessage = expressAsyncHandler(async (req, res) => {
     status: "sent",
   };
 
-  if (file) {
+  if (uploaded) {
+    // Build accessible URL
+    const url = `${req.protocol}://${req.get('host')}/uploads/${uploaded.filename}`;
+    newMessage.file = {
+      originalName: uploaded.originalname,
+      mimeType: uploaded.mimetype,
+      size: uploaded.size,
+      url: url,
+    };
+  } else if (file) {
+    // Backwards-compatible base64 support
     newMessage.file = {
       originalName: file.originalName,
       mimeType: file.mimeType,
@@ -61,6 +74,9 @@ const sendMessage = expressAsyncHandler(async (req, res) => {
 });
 
 // Update message status
+const fs = require('fs');
+const path = require('path');
+
 const updateMessageStatus = expressAsyncHandler(async (req, res) => {
   const { messageId, status } = req.body;
 
@@ -75,6 +91,75 @@ const updateMessageStatus = expressAsyncHandler(async (req, res) => {
       { new: true }
     );
     res.json(message);
+  } catch (error) {
+    res.status(400);
+    throw new Error(error.message);
+  }
+});
+
+// Toggle reaction on a message
+const reactToMessage = expressAsyncHandler(async (req, res) => {
+  const { messageId } = req.params;
+  const { emoji } = req.body;
+
+  if (!messageId || !emoji) {
+    res.status(400);
+    throw new Error('Message ID and emoji are required');
+  }
+
+  try {
+    const message = await Message.findById(messageId);
+    if (!message) {
+      res.status(404);
+      throw new Error('Message not found');
+    }
+
+    const userId = req.user._id.toString();
+    // find reaction entry
+    const rIndex = message.reactions.findIndex((r) => r.emoji === emoji);
+    if (rIndex === -1) {
+      // add new reaction
+      message.reactions.push({ emoji, users: [req.user._id] });
+    } else {
+      const userIdx = message.reactions[rIndex].users.findIndex((u) => u.toString() === userId);
+      if (userIdx === -1) {
+        message.reactions[rIndex].users.push(req.user._id);
+      } else {
+        // remove user's reaction
+        message.reactions[rIndex].users.splice(userIdx, 1);
+        // if no users left for this emoji, remove the reaction entry
+        if (message.reactions[rIndex].users.length === 0) {
+          message.reactions.splice(rIndex, 1);
+        }
+      }
+    }
+
+    await message.save();
+
+    // populate necessary fields
+    const populated = await Message.findById(message._id)
+      .populate('sender', 'name pic')
+      .populate('reciever')
+      .populate('chat');
+
+    // Emit reaction update over socket.io so connected clients receive it in real-time
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        if (populated.chat && populated.chat.isGroupChat) {
+          // For group chats, emit to the group room
+          io.to(`group_${populated.chat._id}`).emit('message_reaction_updated', populated);
+        } else {
+          // For private chats, emit to both sender and receiver rooms
+          if (populated.sender && populated.sender._id) io.to(populated.sender._id.toString()).emit('message_reaction_updated', populated);
+          if (populated.reciever && populated.reciever._id) io.to(populated.reciever._id.toString()).emit('message_reaction_updated', populated);
+        }
+      }
+    } catch (emitErr) {
+      console.error('Error emitting reaction update via socket.io:', emitErr);
+    }
+
+    res.json(populated);
   } catch (error) {
     res.status(400);
     throw new Error(error.message);
@@ -127,6 +212,14 @@ const deleteMessage = expressAsyncHandler(async (req, res) => {
 
     const chatId = message.chat;
 
+    // Remove uploaded file if present
+    if (message.file && message.file.url) {
+      const filePath = path.join(__dirname, '..', message.file.url.replace(`${req.protocol}://${req.get('host')}/`, ''));
+      fs.unlink(filePath, (err) => {
+        if (err) console.error('Error deleting file from disk:', err);
+      });
+    }
+
     await Message.findByIdAndDelete(messageId);
 
     // Update chat's latestMessage if this was the last message
@@ -142,4 +235,4 @@ const deleteMessage = expressAsyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { allMessages, sendMessage, updateMessageStatus, markMessageAsRead, deleteMessage };
+module.exports = { allMessages, sendMessage, updateMessageStatus, markMessageAsRead, deleteMessage, reactToMessage };

@@ -5,6 +5,7 @@ export const SocketContext = createContext();
 
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState({}); // { userId: { isOnline, lastSeen } }
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("userData"));
@@ -19,10 +20,29 @@ export const SocketProvider = ({ children }) => {
         reconnectionAttempts: 5,
       });
 
-      // When connected, add user to online list
+      // When connected, notify server that this user is online
       newSocket.on("connect", () => {
-        console.log("Socket connected:", newSocket.id);
-        newSocket.emit("addUser", userData.data._id);
+        console.log("SocketProvider connected, socket id:", newSocket.id);
+        newSocket.emit("user_online", userData.data._id);
+      });
+
+      // Listen for global user status changes
+      newSocket.on('user_status_changed', (data) => {
+        // data: { userId, isOnline, lastSeen }
+        console.log('SocketProvider received user_status_changed:', data);
+        setOnlineUsers((prev) => ({ ...prev, [data.userId]: { isOnline: data.isOnline, lastSeen: data.lastSeen } }));
+      });
+
+      // Initialize online users list when connecting
+      newSocket.on('current_online_users', (data) => {
+        // data: { userIds: [id...] }
+        console.log('SocketProvider received current_online_users:', data);
+        if (!data || !data.userIds) return;
+        const init = {};
+        data.userIds.forEach((id) => {
+          init[id] = { isOnline: true };
+        });
+        setOnlineUsers((prev) => ({ ...prev, ...init }));
       });
 
       newSocket.on("disconnect", () => {
@@ -39,7 +59,7 @@ export const SocketProvider = ({ children }) => {
   }, []);
 
   return (
-    <SocketContext.Provider value={{ socket }}>
+    <SocketContext.Provider value={{ socket, onlineUsers }}>
       {children}
     </SocketContext.Provider>
   );

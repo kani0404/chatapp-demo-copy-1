@@ -18,6 +18,16 @@ const loginController = expressAsyncHandler(async (req, res) => {
       isOnline: true, 
       lastSeen: new Date() 
     });
+
+    // Emit real-time status change so other clients receive the update immediately
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('user_status_changed', { userId: user._id, isOnline: true });
+      }
+    } catch (emitErr) {
+      console.error('Error emitting login status change:', emitErr);
+    }
     
     return res.status(200).json({
       _id: user._id,
@@ -93,6 +103,16 @@ const logoutController = expressAsyncHandler(async (req, res) => {
     lastSeen: new Date() 
   });
   
+  // Emit real-time status change if socket.io is available
+  try {
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('user_status_changed', { userId, isOnline: false, lastSeen: new Date() });
+    }
+  } catch (err) {
+    console.error('Error emitting logout status:', err);
+  }
+
   return res.status(200).json({ message: "Logged out successfully" });
 });
 

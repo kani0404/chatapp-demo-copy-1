@@ -12,6 +12,24 @@ const groupMessageSchema = mongoose.Schema(
       trim: true,
       required: true,
     },
+    file: {
+      originalName: String,
+      mimeType: String,
+      size: Number,
+      base64: String,
+      url: String,
+    },
+    reactions: [
+      {
+        emoji: String,
+        users: [
+          {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+          },
+        ],
+      },
+    ],
     group: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Group",

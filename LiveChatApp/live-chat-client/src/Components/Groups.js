@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import { IconButton } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { myContext } from "./MainContainer";
@@ -65,15 +66,20 @@ function Groups() {
         alignItems: "center",
         boxShadow: "0 8px 32px rgba(99, 102, 241, 0.15)",
       }}>
-        <h2 style={{
-          margin: "0",
-          fontSize: "18px",
-          fontWeight: "700",
-          color: "#f0f2f5",
-          letterSpacing: "0.3px",
-        }}>
-          Groups
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <IconButton onClick={() => nav(-1)} title="Back" sx={{ color: '#f0f2f5' }}>
+            <ArrowBackIosNewIcon />
+          </IconButton>
+          <h2 style={{
+            margin: "0",
+            fontSize: "18px",
+            fontWeight: "700",
+            color: "#f0f2f5",
+            letterSpacing: "0.3px",
+          }}>
+            Groups
+          </h2>
+        </div>
         <IconButton
           onClick={() => setRefresh(!refresh)}
           sx={{

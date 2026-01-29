@@ -5,16 +5,22 @@ const cors = require("cors");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 const http = require("http");
 const socketIo = require("socket.io");
+const path = require("path");
 
 dotenv.config();
 
 const app = express();
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: "*",
   },
 });
+
+// Make io available through the express app so controllers can emit events without circular requires
+app.set('io', io);
 
 app.use(
   cors({
@@ -49,19 +55,37 @@ app.use("/message", messageRoutes);
 app.use("/group", groupRoutes);
 
 // Socket.io setup
-const userSockets = {}; // Map userId to socketId
+// Map userId -> Set(socketId) to support multiple tabs/devices per user
+const userSockets = {};
+const UserModel = require('./modals/userModel');
 
 io.on("connection", (socket) => {
   console.log("New user connected:", socket.id);
 
+  // Send current online users list to the newly connected socket so it can initialize state
+  try {
+    const onlineIds = Object.keys(userSockets || {});
+    socket.emit('current_online_users', { userIds: onlineIds });
+  } catch (err) {
+    console.error('Error emitting current online users:', err);
+  }
+
   // User online - store socket mapping
-  socket.on("user_online", (userId) => {
-    socket.join(userId);
-    userSockets[userId] = socket.id;
-    console.log(`User ${userId} is online`);
-    
-    // Broadcast user online status to all connected clients
-    io.emit("user_status_changed", { userId, isOnline: true });
+  socket.on("user_online", async (userId) => {
+    try {
+      socket.join(userId);
+      if (!userSockets[userId]) userSockets[userId] = new Set();
+      userSockets[userId].add(socket.id);
+      console.log(`User ${userId} is online (socket ${socket.id})`);
+
+      // Persist online status in DB if first connection
+      if (userSockets[userId].size === 1) {
+        await UserModel.findByIdAndUpdate(userId, { isOnline: true });
+        io.emit("user_status_changed", { userId, isOnline: true });
+      }
+    } catch (err) {
+      console.error('Error handling user_online:', err);
+    }
   });
 
   // Join group
@@ -129,16 +153,24 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     console.log("User disconnected:", socket.id);
-    // Find and remove user from userSockets
-    for (let userId in userSockets) {
-      if (userSockets[userId] === socket.id) {
-        delete userSockets[userId];
-        // Broadcast user offline status
-        io.emit("user_status_changed", { userId, isOnline: false });
-        break;
+    try {
+      // Find userId(s) that have this socket and remove it
+      for (let userId in userSockets) {
+        if (userSockets[userId].has(socket.id)) {
+          userSockets[userId].delete(socket.id);
+          // If no more sockets for this user, mark offline and notify
+          if (userSockets[userId].size === 0) {
+            delete userSockets[userId];
+            await UserModel.findByIdAndUpdate(userId, { isOnline: false, lastSeen: new Date() });
+            io.emit('user_status_changed', { userId, isOnline: false, lastSeen: new Date() });
+          }
+          break;
+        }
       }
+    } catch (err) {
+      console.error('Error handling disconnect:', err);
     }
   });
 });

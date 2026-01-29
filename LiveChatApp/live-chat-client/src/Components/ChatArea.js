@@ -12,12 +12,21 @@ import Skeleton from "@mui/material/Skeleton";
 import axios from "axios";
 import { myContext } from "./MainContainer";
 import io from "socket.io-client";
+import { SocketContext } from "./SocketContext";
+import { useContext as useCtx } from "react"; 
+import emojis from "./emojiList";
 
 function ChatArea() {
   const lightTheme = useSelector((state) => state.themeKey);
   const [messageContent, setMessageContent] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+
+  // Insert emoji into input (used by emoji buttons)
+  const handleReact = (emoji) => {
+    setMessageContent((prev) => prev + emoji);
+  };
+
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const dyParams = useParams();
@@ -26,23 +35,14 @@ function ChatArea() {
   // console.log(chat_id, chat_user);
   const userData = JSON.parse(localStorage.getItem("userData"));
   const [allMessages, setAllMessages] = useState([]);
+  const [otherUserId, setOtherUserId] = useState(null);
+  const { socket, onlineUsers } = useCtx(SocketContext);
   // console.log("Chat area id : ", chat_id._id);
   // const refresh = useSelector((state) => state.refreshKey);
   const { refresh, setRefresh } = useContext(myContext);
   const [loaded, setloaded] = useState(false);
 
-  const emojis = [
-    "😀", "😂", "😍", "😘", "🤔", "😎", "🤗", "😉", "👍", "👏",
-    "🎉", "🔥", "💯", "❤️", "😢", "😡", "🤮", "😴", "👋", "🙏",
-    "😆", "😅", "😄", "😃", "😁", "😜", "😝", "😒", "😌", "😔",
-    "😖", "😕", "😨", "😱", "😳", "😵", "😲", "😞", "😓", "😩",
-    "😴", "😷", "🤒", "🤕", "🤢", "🤮", "🤐", "🤑", "🤓", "😏",
-    "😬", "🙁", "😼", "😻", "😹", "😺", "😸", "😽", "😾", "😿",
-    "🙀", "🙈", "🙉", "🙊", "💪", "👊", "✊", "👏", "🙌", "👐",
-    "🤲", "🤜", "🤛", "🙏", "💔", "💕", "💖", "💗", "💘", "💝",
-    "💟", "🔥", "⭐", "✨", "💫", "🌟", "⚡", "💥", "🎊", "🎉",
-    "🎈", "🎀", "🎁", "🎂", "🍕", "🍔", "🍟", "🌭", "🍿", "🥤"
-  ];
+  // emoji list imported from shared emojiList
 
   const deleteChat = () => {
     const config = {
@@ -104,27 +104,24 @@ function ChatArea() {
   };
 
   const sendMessage = async () => {
-    // console.log("SendMessage Fired to", chat_id._id);
     if (!messageContent.trim() && !selectedFile) return;
 
-    const config = {
-      headers: {
-        Authorization: `Bearer ${userData.data.token}`,
-      },
+    const tokenHeader = {
+      headers: { Authorization: `Bearer ${userData.data.token}` },
     };
 
-    // Save content before clearing
-    const tempContent = messageContent;
-    let fileData = null;
+    // Keep a local reference to the file before clearing state
+    const fileToUpload = selectedFile;
 
-    if (selectedFile) {
+    let fileData = null;
+    if (fileToUpload) {
       try {
-        const base64 = await convertFileToBase64(selectedFile);
+        const base64 = await convertFileToBase64(fileToUpload);
         fileData = {
-          originalName: selectedFile.name,
-          mimeType: selectedFile.type,
-          size: selectedFile.size,
-          base64: base64,
+          originalName: fileToUpload.name,
+          mimeType: fileToUpload.type,
+          size: fileToUpload.size,
+          base64,
         };
       } catch (error) {
         console.error("Error converting file:", error);
@@ -132,39 +129,63 @@ function ChatArea() {
       }
     }
 
-    // Create message object to show immediately
     const newMessage = {
       _id: Date.now(),
       sender: { _id: userData.data._id, name: userData.data.name },
-      content: tempContent,
+      content: messageContent,
       file: fileData,
       createdAt: new Date().toISOString(),
     };
 
-    // Add message to state immediately for instant display
-    setAllMessages([...allMessages, newMessage]);
+    // Optimistic UI
+    setAllMessages((prev) => [...prev, newMessage]);
     setMessageContent("");
     setSelectedFile(null);
 
-    // Send to server
-    axios
-      .post(
-        "http://localhost:8080/message/",
-        {
-          content: tempContent,
-          chatId: chat_id,
-          file: fileData,
-        },
-        config
-      )
-      .then(({ data }) => {
-        console.log("Message Fired");
-      })
-      .catch((error) => {
-        console.error("Error sending message:", error);
-        // Remove temporary message if sending fails
-        setAllMessages(allMessages.filter(m => m._id !== newMessage._id));
-      });
+    try {
+      if (fileToUpload) {
+        const formData = new FormData();
+        formData.append("file", fileToUpload);
+        formData.append("content", newMessage.content);
+        formData.append("chatId", chat_id);
+
+        const { data } = await axios.post("http://localhost:8080/message/", formData, tokenHeader);
+
+        // Replace temp message with server response
+        setAllMessages((prev) => prev.map((m) => (m._id === newMessage._id ? data : m)));
+      } else {
+        const { data } = await axios.post(
+          "http://localhost:8080/message/",
+          {
+            content: newMessage.content,
+            chatId: chat_id,
+          },
+          tokenHeader
+        );
+
+        // Replace temp message with server response
+        setAllMessages((prev) => prev.map((m) => (m._id === newMessage._id ? data : m)));
+      }
+
+      console.log("Message Fired");
+    } catch (error) {
+      console.error("Error sending message:", error);
+      console.error("Server response:", error.response?.data);
+      setAllMessages((prev) => prev.filter((m) => m._id !== newMessage._id));
+    }
+  };
+
+  // Handler to toggle reaction on a message (moved to component scope)
+  const handleMessageReact = async (messageId, emoji, isGroup = false) => {
+    const config = { headers: { Authorization: `Bearer ${userData.data.token}` } };
+    try {
+      const url = isGroup ? `http://localhost:8080/group/message/${messageId}/react` : `http://localhost:8080/message/${messageId}/react`;
+      const { data } = await axios.post(url, { emoji }, config);
+      // Update our local state with server response
+      setAllMessages((prev) => prev.map((m) => (m._id === data._id ? data : m)));
+    } catch (error) {
+      console.error('Error reacting to message:', error);
+    }
   };
 
   const scrollToBottom = () => {
@@ -180,10 +201,26 @@ function ChatArea() {
     };
     axios
       .get("http://localhost:8080/message/" + chat_id, config)
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         setAllMessages(data);
         setloaded(true);
-        // console.log("Data from Acess Chat API ", data);
+        // Try to determine other user from chat users in messages
+        if (data && data.length > 0 && data[0].chat && data[0].chat.users) {
+          const other = data[0].chat.users.find((u) => u._id !== userData.data._id);
+          if (other) setOtherUserId(other._id);
+        } else {
+          // If there are no messages yet, fetch chats and find the conversation
+          try {
+            const { data: chats } = await axios.get('http://localhost:8080/chat/', config);
+            const convo = chats.find((c) => c._id === chat_id);
+            if (convo && convo.users) {
+              const other = convo.users.find((u) => u._id !== userData.data._id);
+              if (other) setOtherUserId(other._id);
+            }
+          } catch (err) {
+            console.error('Error fetching chat info:', err);
+          }
+        }
       });
   }, [refresh, chat_id, userData.data.token]);
 
@@ -196,6 +233,11 @@ function ChatArea() {
   useEffect(() => {
     const socket = io("http://localhost:8080", {
       query: { userId: userData.data._id },
+    });
+
+    // Ensure server knows this user is online (joins user room)
+    socket.on('connect', () => {
+      socket.emit('user_online', userData.data._id);
     });
 
     // Listen for message delivered status
@@ -218,13 +260,19 @@ function ChatArea() {
       );
     });
 
+    // Listen for message reaction updates
+    socket.on("message_reaction_updated", (data) => {
+      // 'data' is the updated message object
+      setAllMessages((prev) => prev.map((m) => (m._id === data._id ? data : m)));
+    });
+
     // Listen for user status changes
     socket.on("user_status_changed", (data) => {
       console.log("User status changed:", data);
       // You can update user online status here if needed
     });
 
-    // Mark received messages as read when viewing the chat
+      // Mark received messages as read when viewing the chat
     allMessages.forEach((msg) => {
       if (msg.sender._id !== userData.data._id && msg.status !== "read") {
         socket.emit("message_read", { messageId: msg._id });
@@ -239,6 +287,10 @@ function ChatArea() {
         ).catch((error) => console.error("Error marking message as read:", error));
       }
     });
+
+    // Note: we rely on the server socket emission to broadcast reaction updates to all clients
+
+
 
     return () => {
       socket.disconnect();
@@ -302,13 +354,13 @@ function ChatArea() {
             <div style={{
               width: "12px",
               height: "12px",
-              backgroundColor: "#22c55e",
+              backgroundColor: (otherUserId && onlineUsers && onlineUsers[otherUserId]?.isOnline) ? "#22c55e" : "#9CA3AF",
               borderRadius: "50%",
               position: "absolute",
               bottom: "0",
               right: "0",
               border: "2px solid " + (lightTheme ? "#FFFFFF" : "#0F172A"),
-              boxShadow: "0 0 6px rgba(34, 197, 94, 0.5)",
+              boxShadow: (otherUserId && onlineUsers && onlineUsers[otherUserId]?.isOnline) ? "0 0 6px rgba(34, 197, 94, 0.5)" : "none",
             }}></div>
           </div>
           <div className={"header-text" + (lightTheme ? "" : " dark")} style={{
@@ -326,10 +378,10 @@ function ChatArea() {
             <p style={{
               margin: "0",
               fontSize: "12px",
-              color: lightTheme ? "#6B7280" : "#22c55e",
+              color: (otherUserId && onlineUsers && onlineUsers[otherUserId]?.isOnline) ? (lightTheme ? "#6B7280" : "#22c55e") : (lightTheme ? "#6B7280" : "#9CA3AF"),
               fontWeight: "500",
             }}>
-              🟢 Online
+              {otherUserId && onlineUsers && onlineUsers[otherUserId]?.isOnline ? 'Online' : 'Offline'}
             </p>
           </div>
           <IconButton 
@@ -352,10 +404,10 @@ function ChatArea() {
               const self_id = userData.data._id;
               if (sender._id === self_id) {
                 // console.log("I sent it ");
-                return <MessageSelf props={message} key={index} onDelete={handleDeleteMessage} />;
+                return <MessageSelf props={message} key={index} onDelete={handleDeleteMessage} onReact={handleMessageReact} />;
               } else {
                 // console.log("Someone Sent it");
-                return <MessageOthers props={message} key={index} />;
+                return <MessageOthers props={message} key={index} onReact={handleMessageReact} />;
               }
             })}
           <div ref={messagesEndRef} className="BOTTOM" />
@@ -433,7 +485,7 @@ function ChatArea() {
                   key={index}
                   className="emoji-btn"
                   onClick={() => {
-                    setMessageContent(messageContent + emoji);
+                    handleReact(emoji);
                     setShowEmojiPicker(false);
                   }}
                 >

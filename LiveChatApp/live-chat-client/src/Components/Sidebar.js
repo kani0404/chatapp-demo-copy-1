@@ -15,6 +15,8 @@ import axios from "axios";
 import { refreshSidebarFun } from "../Features/refreshSidebar";
 import { myContext } from "./MainContainer";
 import io from "socket.io-client";
+import { SocketContext } from "./SocketContext";
+import { useContext as useCtx } from "react";
 
 function Sidebar() {
   const navigate = useNavigate();
@@ -36,19 +38,17 @@ function Sidebar() {
 
   const user = userData.data;
   
-  // Initialize socket connection and emit user online event
+  const { socket, onlineUsers } = useCtx(SocketContext);
+
   useEffect(() => {
-    const socket = io("http://localhost:8080", {
-      query: { userId: user._id },
-    });
+    // When socket connects it will emit user_online from the provider
+    // We don't need to create a separate socket here anymore
+    // But if the component needs socket in future, it's available via context
 
-    // Emit user online event
-    socket.emit("user_online", user._id);
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [user._id]);
+    // Debug: show onlineUsers map when it updates
+    console.log('Sidebar onlineUsers:', onlineUsers);
+    return () => {};
+  }, [socket, onlineUsers]);
 
   useEffect(() => {
     // console.log("Sidebar : ", user.token);
@@ -145,11 +145,18 @@ function Sidebar() {
               axios
                 .post("http://localhost:8080/user/logout", {}, config)
                 .then(() => {
+                  // Disconnect socket to ensure server receives disconnect and updates status
+                  if (socket) {
+                    try { socket.disconnect(); } catch (e) { /* ignore */ }
+                  }
                   localStorage.removeItem("userData");
                   navigate("/");
                 })
                 .catch((error) => {
                   console.error("Logout error:", error);
+                  if (socket) {
+                    try { socket.disconnect(); } catch (e) { /* ignore */ }
+                  }
                   localStorage.removeItem("userData");
                   navigate("/");
                 });
@@ -214,6 +221,15 @@ function Sidebar() {
                   </p>
                   <p className={"con-title" + (lightTheme ? "" : " dark")}>
                     {otherUser.name}
+                    {process.env.NODE_ENV === 'development' && (
+                      <div style={{ fontSize: '10px', color: '#6B7280' }}>
+                        ID: {otherUser._id} Status: {JSON.stringify(onlineUsers && onlineUsers[otherUser._id])}
+                      </div>
+                    )}
+                  </p>
+
+                  <p className="con-lastMessage">
+                    No previous Messages, click here to start a new chat
                   </p>
 
                   <p className="con-lastMessage">
@@ -245,6 +261,13 @@ function Sidebar() {
                 <p className={"con-title" + (lightTheme ? "" : " dark")}>
                   {otherUser.name}
                 </p>
+                <div style={{
+                  width: '10px',
+                  height: '10px',
+                  borderRadius: '50%',
+                  background: (onlineUsers && onlineUsers[otherUser._id]?.isOnline) ? '#22c55e' : '#9CA3AF',
+                  marginLeft: '8px'
+                }} />
 
                 <p className="con-lastMessage">
                   {conversation.latestMessage?.content || "No messages yet"}

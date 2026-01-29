@@ -3,6 +3,7 @@ import "./myStyles.css";
 import SearchIcon from "@mui/icons-material/Search";
 import { IconButton } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import logo from "../Images/live-chat_512px.png";
 import { useDispatch, useSelector } from "react-redux";
 import { AnimatePresence, motion } from "framer-motion";
@@ -10,6 +11,8 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { refreshSidebarFun } from "../Features/refreshSidebar";
 import { myContext } from "./MainContainer";
+import { useContext as useCtx } from "react";
+import { SocketContext } from "./SocketContext";
 
 function Users() {
   // const [refresh, setRefresh] = useState(true);
@@ -27,6 +30,8 @@ function Users() {
     nav(-1);
   }
 
+  const { socket, onlineUsers } = useCtx(SocketContext);
+
   useEffect(() => {
     console.log("Users refreshed");
     const config = {
@@ -41,6 +46,19 @@ function Users() {
     });
   }, [refresh]);
 
+  // Listen for status updates and apply them locally
+  useEffect(() => {
+    if (!onlineUsers) return;
+    setUsers((prevUsers) =>
+      prevUsers.map((u) => {
+        if (onlineUsers[u._id]) {
+          return { ...u, isOnline: onlineUsers[u._id].isOnline };
+        }
+        return u;
+      })
+    );
+  }, [onlineUsers]);
+
   return (
     <AnimatePresence>
       <motion.div
@@ -53,9 +71,17 @@ function Users() {
         className="list-container"
       >
         <div className={"ug-header" + (lightTheme ? "" : " dark")}>
+          <IconButton
+            className={"icon" + (lightTheme ? "" : " dark")}
+            onClick={() => nav(-1)}
+            title="Back"
+            sx={{ marginLeft: '6px' }}
+          >
+            <ArrowBackIosNewIcon />
+          </IconButton>
           <img
             src={logo}
-            style={{ height: "2rem", width: "2rem", marginLeft: "10px" }}
+            style={{ height: "2rem", width: "2rem", marginLeft: "6px" }}
           />
           <p className={"ug-title" + (lightTheme ? "" : " dark")}>
             Available Users

@@ -68,20 +68,11 @@ const getGroupsForUser = asyncHandler(async (req, res) => {
 
 // Send a message to group
 const sendGroupMessage = asyncHandler(async (req, res) => {
-  console.log("=== RECEIVED MESSAGE REQUEST ===");
-  console.log("Request body:", req.body);
-  console.log("User ID:", req.user?._id);
-  console.log("Body keys:", Object.keys(req.body));
+  // Accept multipart upload via multer (req.file) or legacy base64 in body
+  const uploaded = req.file;
+  const { content, groupId, file } = req.body;
 
-  const { content, groupId } = req.body;
-
-  console.log("Extracted content:", content);
-  console.log("Extracted groupId:", groupId);
-
-  if (!content || !groupId) {
-    console.error("Validation failed - missing fields:");
-    console.error("  content:", content ? "✓" : "✗ MISSING");
-    console.error("  groupId:", groupId ? "✓" : "✗ MISSING");
+  if ((!content && !file && !uploaded) || !groupId) {
     res.status(400);
     throw new Error("Invalid data passed into request");
   }
@@ -104,11 +95,30 @@ const sendGroupMessage = asyncHandler(async (req, res) => {
       throw new Error("You are not a member of this group");
     }
 
-    const message = await GroupMessage.create({
+    const msgObj = {
       sender: req.user._id,
-      content: content,
+      content: content || "",
       group: groupId,
-    });
+    };
+
+    if (uploaded) {
+      const url = `${req.protocol}://${req.get('host')}/uploads/${uploaded.filename}`;
+      msgObj.file = {
+        originalName: uploaded.originalname,
+        mimeType: uploaded.mimetype,
+        size: uploaded.size,
+        url: url,
+      };
+    } else if (file) {
+      msgObj.file = {
+        originalName: file.originalName,
+        mimeType: file.mimeType,
+        size: file.size,
+        base64: file.base64,
+      };
+    }
+
+    const message = await GroupMessage.create(msgObj);
 
     // Properly populate the message document
     const populatedMessage = await GroupMessage.findById(message._id)
@@ -266,6 +276,9 @@ const leaveGroup = asyncHandler(async (req, res) => {
 });
 
 // Delete a group message
+const fs = require('fs');
+const path = require('path');
+
 const deleteGroupMessage = asyncHandler(async (req, res) => {
   const { messageId } = req.params;
 
@@ -290,6 +303,14 @@ const deleteGroupMessage = asyncHandler(async (req, res) => {
 
     const groupId = message.group;
 
+    // Remove uploaded file if present
+    if (message.file && message.file.url) {
+      const filePath = path.join(__dirname, '..', message.file.url.replace(`${req.protocol}://${req.get('host')}/`, ''));
+      fs.unlink(filePath, (err) => {
+        if (err) console.error('Error deleting file from disk:', err);
+      });
+    }
+
     await GroupMessage.findByIdAndDelete(messageId);
 
     // Update group's latestMessage if this was the last message
@@ -305,6 +326,62 @@ const deleteGroupMessage = asyncHandler(async (req, res) => {
   }
 });
 
+// Toggle reaction on a group message
+const reactToGroupMessage = asyncHandler(async (req, res) => {
+  const { messageId } = req.params;
+  const { emoji } = req.body;
+
+  if (!messageId || !emoji) {
+    res.status(400);
+    throw new Error('Message ID and emoji are required');
+  }
+
+  try {
+    const message = await GroupMessage.findById(messageId);
+    if (!message) {
+      res.status(404);
+      throw new Error('Message not found');
+    }
+
+    const userId = req.user._id.toString();
+    const rIndex = message.reactions.findIndex((r) => r.emoji === emoji);
+    if (rIndex === -1) {
+      message.reactions.push({ emoji, users: [req.user._id] });
+    } else {
+      const userIdx = message.reactions[rIndex].users.findIndex((u) => u.toString() === userId);
+      if (userIdx === -1) {
+        message.reactions[rIndex].users.push(req.user._id);
+      } else {
+        message.reactions[rIndex].users.splice(userIdx, 1);
+        if (message.reactions[rIndex].users.length === 0) {
+          message.reactions.splice(rIndex, 1);
+        }
+      }
+    }
+
+    await message.save();
+
+    const populated = await GroupMessage.findById(message._id)
+      .populate('sender', 'name email')
+      .populate('group');
+
+    // Emit reaction update to the group room so members receive real-time updates
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`group_${populated.group._id}`).emit('message_reaction_updated', populated);
+      }
+    } catch (emitErr) {
+      console.error('Error emitting group reaction update via socket.io:', emitErr);
+    }
+
+    res.json(populated);
+  } catch (error) {
+    res.status(400);
+    throw new Error(error.message);
+  }
+});
+
 module.exports = {
   createGroup,
   getGroupsForUser,
@@ -314,4 +391,5 @@ module.exports = {
   removeMemberFromGroup,
   leaveGroup,
   deleteGroupMessage,
+  reactToGroupMessage,
 };

@@ -23,6 +23,7 @@ const messageModel = mongoose.Schema(
       mimeType: String,
       size: Number,
       base64: String,
+      url: String,
     },
     status: {
       type: String,
@@ -41,6 +42,17 @@ const messageModel = mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
+      },
+    ],
+    reactions: [
+      {
+        emoji: String,
+        users: [
+          {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+          },
+        ],
       },
     ],
   },

@@ -6,9 +6,12 @@ import { myContext } from "./MainContainer";
 import SendIcon from "@mui/icons-material/Send";
 import GroupIcon from "@mui/icons-material/Group";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
+import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
 import { IconButton } from "@mui/material";
 import io from "socket.io-client";
 import "./myStyles.css";
+import ImageModal from "./ImageModal";
 
 function GroupChat() {
   const { groupId } = useParams();
@@ -20,10 +23,16 @@ function GroupChat() {
   const [group, setGroup] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageContent, setMessageContent] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const fileInputRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [socket, setSocket] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const [allGroups, setAllGroups] = useState([]);
+
+  import emojis from "./emojiList";
 
   const userData = JSON.parse(localStorage.getItem("userData"));
   if (!userData) {
@@ -65,6 +74,13 @@ function GroupChat() {
           createdAt: data.timestamp,
         };
         setMessages((prevMessages) => [...prevMessages, newMessage]);
+      }
+    });
+
+    // Listen for reaction updates for group messages
+    newSocket.on('message_reaction_updated', (data) => {
+      if (data.group && data.group._id === groupId) {
+        setMessages((prev) => prev.map((m) => (m._id === data._id ? data : m)));
       }
     });
 
@@ -114,58 +130,110 @@ function GroupChat() {
       });
   }, [groupId, refresh]);
 
-  const sendMessage = () => {
-    if (!messageContent.trim()) {
+  const handleFileSelect = (e) => {
+    const f = e.target.files[0];
+    if (f && f.size > 25 * 1024 * 1024) {
+      alert('File size must be less than 25MB');
+      return;
+    }
+    setSelectedFile(f);
+  };
+
+  const convertFileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const base64String = reader.result.split(',')[1];
+        resolve(base64String);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const sendMessage = async () => {
+    if (!messageContent.trim() && !selectedFile) {
       return;
     }
 
-    const messageData = {
+    // Prepare file preview data and capture the file to send
+    const fileToSend = selectedFile;
+    let fileData = null;
+
+    if (fileToSend) {
+      try {
+        const base64 = await convertFileToBase64(fileToSend);
+        fileData = {
+          originalName: fileToSend.name,
+          mimeType: fileToSend.type,
+          size: fileToSend.size,
+          base64,
+        };
+      } catch (error) {
+        console.error('Error converting file:', error);
+        return;
+      }
+    }
+
+    // Optimistic message
+    const tempMessage = {
+      _id: Date.now(),
+      sender: { _id: user._id, name: user.name },
       content: messageContent,
-      groupId: groupId,
+      file: fileData,
+      createdAt: new Date().toISOString(),
     };
 
-    console.log("=== SENDING MESSAGE ===");
-    console.log("Message data:", messageData);
-    console.log("User token:", user.token ? "✓ Present" : "✗ Missing");
-    console.log("Group ID:", groupId);
-    console.log("Message content:", messageContent);
+    setMessages((prev) => [...prev, tempMessage]);
+    setMessageContent('');
+    setSelectedFile(null);
+
+    const formData = new FormData();
+    formData.append('content', tempMessage.content);
+    formData.append('groupId', groupId);
+    if (fileToSend) formData.append('file', fileToSend);
 
     const config = {
       headers: {
         Authorization: `Bearer ${user.token}`,
-        "Content-Type": "application/json",
       },
     };
 
-    axios
-      .post(
-        "http://localhost:8080/group/message/send",
-        messageData,
-        config
-      )
-      .then((response) => {
-        console.log("Message sent successfully:", response.data);
-        // Emit via Socket.io for real-time update to others
-        if (socket) {
-          socket.emit("group_message", {
-            groupId: groupId,
-            senderId: user._id,
-            senderName: user.name,
-            content: messageContent,
-            timestamp: new Date().toISOString(),
-          });
-        }
-        setMessages([...messages, response.data]);
-        setMessageContent("");
-      })
-      .catch((error) => {
-        console.error("=== ERROR SENDING MESSAGE ===");
-        console.error("Error:", error);
-        console.error("Response:", error.response?.data);
-        console.error("Status:", error.response?.status);
-        alert("Error sending message: " + (error.response?.data?.message || error.message));
-      });
+    try {
+      const { data } = await axios.post('http://localhost:8080/group/message/send', formData, config);
+
+      // Replace temp message with server message
+      setMessages((prev) => prev.map((m) => (m._id === tempMessage._id ? data : m)));
+
+      // Emit via socket
+      if (socket) {
+        socket.emit('group_message', {
+          groupId: groupId,
+          senderId: user._id,
+          senderName: user.name,
+          content: data.content,
+          timestamp: data.createdAt || new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      console.error('Error sending group message:', error);
+      alert('Error sending message');
+      // Remove optimistic message
+      setMessages((prev) => prev.filter((m) => m._id !== tempMessage._id));
+    }
   };
+
+  // Toggle reaction on a group message
+  const handleReactGroup = async (messageId, emoji) => {
+    const config = { headers: { Authorization: `Bearer ${user.token}` } };
+    try {
+      const { data } = await axios.post(`http://localhost:8080/group/message/${messageId}/react`, { emoji }, config);
+      setMessages((prev) => prev.map((m) => (m._id === data._id ? data : m)));
+    } catch (error) {
+      console.error('Error reacting to group message:', error);
+    }
+  };
+
 
   const leaveGroup = () => {
     if (window.confirm("Are you sure you want to leave this group?")) {
@@ -562,6 +630,31 @@ function GroupChat() {
                 >
                   {message.content}
                 </div>
+                {message.file && (
+                  <div style={{ marginTop: 8 }}>
+                    {message.file.mimeType && message.file.mimeType.startsWith('image/') ? (
+                      <img
+                        src={message.file.url ? message.file.url : `data:${message.file.mimeType};base64,${message.file.base64}`}
+                        alt="Shared"
+                        onClick={() => setSelectedImage(message.file.url ? message.file.url : `data:${message.file.mimeType};base64,${message.file.base64}`)}
+                        style={{ maxWidth: 300, maxHeight: 300, borderRadius: 12, cursor: 'pointer' }}
+                      />
+                    ) : (
+                      <div onClick={() => {
+                        if (message.file.url) window.open(message.file.url, '_blank');
+                        else {
+                          // construct data url from base64
+                          const link = document.createElement('a');
+                          link.href = `data:${message.file.mimeType};base64,${message.file.base64}`;
+                          link.download = message.file.originalName;
+                          link.click();
+                        }
+                      }} style={{ marginTop: 8, backgroundColor: message.sender._id === user._id ? '#0369a1' : 'rgba(99, 102, 241, 0.12)', color: message.sender._id === user._id ? '#fff' : (lightTheme ? '#1F2937' : '#E5E7EB'), padding: '10px 12px', borderRadius: 10, display: 'inline-block', cursor: 'pointer' }}>
+                        📎 {message.file.originalName}
+                      </div>
+                    )}
+                  </div>
+                )
                 <p style={{
                   fontSize: "12px",
                   color: lightTheme ? "#9CA3AF" : "#6B7280",
@@ -574,11 +667,68 @@ function GroupChat() {
                     minute: "2-digit",
                   })}
                 </p>
+
+                {/* Reactions */}
+                {message.reactions && message.reactions.length > 0 && (
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px', alignItems: 'center' }}>
+                    {message.reactions.map((r) => {
+                      const currentUserId = user._id;
+                      const reacted = r.users && r.users.find((u) => (u._id ? u._id.toString() : u.toString()) === currentUserId);
+                      return (
+                        <div
+                          key={r.emoji}
+                          onClick={() => handleReactGroup(message._id, r.emoji)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '4px 8px',
+                            borderRadius: '12px',
+                            background: reacted ? (message.sender._id === user._id ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)') : 'rgba(0,0,0,0.04)',
+                            cursor: 'pointer',
+                            color: message.sender._id === user._id ? '#ffffff' : (lightTheme ? '#1F2937' : '#E5E7EB'),
+                            fontWeight: 600,
+                          }}
+                        >
+                          <span>{r.emoji}</span>
+                          <span style={{ fontSize: '12px' }}>{r.users.length}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Reaction picker button */}
+                <div style={{ display: 'flex', alignItems: 'center', marginTop: '6px' }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); const picker = e.currentTarget.nextSibling; if (picker) picker.style.display = picker.style.display === 'flex' ? 'none' : 'flex'; }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: message.sender._id === user._id ? '#ffffff' : (lightTheme ? '#1F2937' : '#E5E7EB'),
+                      fontSize: '18px',
+                      padding: '4px',
+                    }}
+                    title="React"
+                  >
+                    😄
+                  </button>
+                  <div style={{ display: 'none', gap: '6px', marginLeft: '8px', background: message.sender._id === user._id ? '#0F172A' : '#F9FAFB', padding: '8px', borderRadius: '8px' }}>
+                    {emojis.map((e, idx) => (
+                      <button key={idx} onClick={() => handleReactGroup(message._id, e)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '18px' }}>
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
               </div>
             </div>
           ))
         )}
         <div ref={messagesEndRef} />
+        <ImageModal open={!!selectedImage} src={selectedImage} onClose={() => setSelectedImage(null)} />
       </div>
 
       {/* Input Area - Web Layout */}
@@ -623,19 +773,31 @@ function GroupChat() {
             e.target.style.boxShadow = "0 1px 2px rgba(0, 0, 0, 0.05)";
           }}
         />
+        <input type="file" ref={fileInputRef} onChange={(e) => { const f = e.target.files[0]; if (f && f.size > 25 * 1024 * 1024) { alert('File size must be less than 25MB'); return; } setSelectedFile(f); }} style={{ display: 'none' }} accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
+        {selectedFile && (
+          <div style={{ fontSize: 13, color: lightTheme ? '#0C4A6E' : '#60A5FA', marginRight: 8 }}>
+            📎 {selectedFile.name}
+          </div>
+        )}
+        <IconButton onClick={() => fileInputRef.current?.click()} title="Attach File">
+          <AttachFileIcon />
+        </IconButton>
+        <IconButton onClick={() => setShowEmojiPicker(!showEmojiPicker)} title="Add Emoji">
+          <EmojiEmotionsIcon />
+        </IconButton>
         <IconButton
           onClick={sendMessage}
-          disabled={!messageContent.trim()}
+          disabled={!messageContent.trim() && !selectedFile}
           sx={{
-            backgroundColor: messageContent.trim() ? "#0084FF" : "#D1D5DB",
+            backgroundColor: (messageContent.trim() || selectedFile) ? "#0084FF" : "#D1D5DB",
             color: "white",
             padding: "12px",
             borderRadius: "50%",
             transition: "all 0.3s ease",
-            boxShadow: messageContent.trim() ? "0 2px 8px rgba(0, 132, 255, 0.3)" : "none",
+            boxShadow: (messageContent.trim() || selectedFile) ? "0 2px 8px rgba(0, 132, 255, 0.3)" : "none",
             "&:hover": {
-              backgroundColor: messageContent.trim() ? "#0073E6" : "#D1D5DB",
-              transform: messageContent.trim() ? "scale(1.05)" : "none",
+              backgroundColor: (messageContent.trim() || selectedFile) ? "#0073E6" : "#D1D5DB",
+              transform: (messageContent.trim() || selectedFile) ? "scale(1.05)" : "none",
             },
             "&:disabled": {
               backgroundColor: "#D1D5DB",
